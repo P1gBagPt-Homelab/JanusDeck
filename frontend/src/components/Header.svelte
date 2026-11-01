@@ -18,11 +18,11 @@
   function toggleLock() {
     if (store.sessionToken) {
       store.setSession(null);
-      store.addToast('Session locked. PIN required for power actions.', 'info');
+      store.addToast('Website locked. Master PIN required to view.', 'info');
     } else {
       store.pendingAction = {
         type: 'unlock_only',
-        label: 'Unlock Session'
+        label: 'Unlock Website'
       };
       store.activeModal = 'pin';
     }
@@ -31,7 +31,7 @@
   const hostname = $derived(store.metrics?.host?.hostname || 'Janus Server');
   const osName = $derived(store.metrics?.host?.os || 'Linux');
   const uptime = $derived(formatUptime(store.metrics?.host?.uptime_seconds));
-  const isUnlocked = $derived(!!store.sessionToken);
+  const isUnlocked = $derived(store.isUnlocked);
 </script>
 
 <header class="sticky top-0 z-30 bg-[#0b0f19]/90 backdrop-blur-md border-b border-white/[0.08] py-3.5 px-4 sm:px-6 lg:px-8">

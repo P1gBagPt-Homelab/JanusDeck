@@ -44,7 +44,7 @@
       const res = await executePowerAction(
         store.pendingAction.type as any,
         store.sessionToken,
-        undefined,
+        store.cachedPin || undefined,
         store.pendingAction.targetId
       );
       statusState = 'done';

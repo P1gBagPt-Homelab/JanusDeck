@@ -32,22 +32,21 @@
     } catch (e) {
       console.warn('Could not fetch configuration:', e);
     }
+  });
 
-    // 2. Fetch power status
-    try {
-      const pStatus = await fetchPowerStatus();
-      store.powerStatus = pStatus;
-    } catch (e) {
-      console.warn('Could not fetch power status:', e);
+  // Reactive data streaming & health checks active only when unlocked
+  $effect(() => {
+    if (store.isUnlocked) {
+      startTelemetryStream();
+      fetchPowerStatus().then(p => {
+        store.powerStatus = p;
+      }).catch(() => {});
+      fetchServices().then(res => {
+        store.services = res.services;
+      }).catch(() => {});
+    } else {
+      stopTelemetryStream();
     }
-
-    // 3. Initial services health checks
-    fetchServices().then(res => {
-      store.services = res.services;
-    }).catch(() => {});
-
-    // 4. Start real-time hardware telemetry stream
-    startTelemetryStream();
   });
 
   onDestroy(() => {
@@ -55,24 +54,31 @@
   });
 </script>
 
-<div class="flex flex-col min-h-screen bg-ground text-slate-100">
-  <Header />
+{#if !store.isUnlocked}
+  <!-- Mandatory Security Gate: PIN entry required to access website -->
+  <PinModal mandatory={true} />
+{:else}
+  <!-- Unlocked Command Deck Dashboard -->
+  <div class="flex flex-col min-h-screen bg-ground text-slate-100 animate-in fade-in duration-300">
+    <Header />
 
-  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-8">
-    <TelemetryDeck />
-    <PowerDeck />
-    <ServiceDirectory />
-  </main>
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-8">
+      <TelemetryDeck />
+      <PowerDeck />
+      <ServiceDirectory />
+    </main>
 
-  <footer class="border-t border-white/[0.08] py-4 bg-[#0b0f19]/80 text-xs text-slate-400">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
-      <span>JanusDeck &bull; Project Janus Homelab Command Deck (Svelte 5)</span>
-      <span>FastAPI &bull; systemd D-Bus &bull; GNU GRUB &bull; MIT License</span>
-    </div>
-  </footer>
+    <footer class="border-t border-white/[0.08] py-4 bg-[#0b0f19]/80 text-xs text-slate-400">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
+        <span>JanusDeck &bull; Project Janus Homelab Command Deck (Svelte 5)</span>
+        <span>FastAPI &bull; systemd D-Bus &bull; GNU GRUB &bull; MIT License</span>
+      </div>
+    </footer>
 
-  <!-- Security & Confirmation Modals -->
-  <PinModal />
-  <CountdownGate />
-  <ToastContainer />
-</div>
+    <!-- Security & Confirmation Modals (for active power actions while unlocked) -->
+    <PinModal />
+    <CountdownGate />
+  </div>
+{/if}
+
+<ToastContainer />

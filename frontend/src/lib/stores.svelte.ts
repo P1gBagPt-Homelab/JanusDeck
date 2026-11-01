@@ -28,6 +28,16 @@ class DashboardStore {
   sessionToken = $state<string | null>(
     typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('janus_session_token') : null
   );
+  cachedPin = $state<string | null>(
+    typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('janus_session_pin') : null
+  );
+
+  get isUnlocked(): boolean {
+    if (this.config && this.config.security?.pin_required === false) {
+      return true;
+    }
+    return !!this.sessionToken;
+  }
 
   // Modal & Pending Action
   activeModal = $state<'none' | 'pin' | 'countdown'>('none');
@@ -40,13 +50,21 @@ class DashboardStore {
   // Toasts
   toasts = $state<ToastMessage[]>([]);
 
-  setSession(token: string | null) {
+  setSession(token: string | null, pin?: string | null) {
     this.sessionToken = token;
+    if (pin !== undefined) {
+      this.cachedPin = pin;
+    }
     if (typeof sessionStorage !== 'undefined') {
       if (token) {
         sessionStorage.setItem('janus_session_token', token);
       } else {
         sessionStorage.removeItem('janus_session_token');
+      }
+      if (pin) {
+        sessionStorage.setItem('janus_session_pin', pin);
+      } else if (pin === null || !token) {
+        sessionStorage.removeItem('janus_session_pin');
       }
     }
   }
