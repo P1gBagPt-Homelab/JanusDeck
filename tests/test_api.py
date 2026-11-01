@@ -61,3 +61,21 @@ async def test_stats_sse_stream():
                     chunk_received = True
                     break
             assert chunk_received is True
+
+
+@pytest.mark.asyncio
+async def test_services_endpoint():
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get("/api/services")
+        assert response.status_code == 200
+        data = response.json()
+        assert "services" in data
+        assert isinstance(data["services"], list)
+        for cat in data["services"]:
+            assert "category" in cat
+            assert "items" in cat
+            for item in cat["items"]:
+                assert "name" in item
+                assert "url" in item
+                assert "online" in item
+                assert "status" in item

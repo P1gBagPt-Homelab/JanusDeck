@@ -1,6 +1,33 @@
 import type { AppPublicConfig, PowerStatus, ServiceItem } from '../types/config';
 import type { TelemetrySnapshot } from '../types/telemetry';
 
+export function normalizeServices(data: any): ServiceItem[] {
+  if (!data || !Array.isArray(data)) return [];
+  const flat: ServiceItem[] = [];
+
+  for (const entry of data) {
+    if (!entry) continue;
+
+    // Category container format: { category: string, items: ServiceItem[] }
+    if (Array.isArray(entry.items)) {
+      const categoryName = entry.category || 'General';
+      for (const item of entry.items) {
+        if (item && typeof item === 'object') {
+          flat.push({
+            ...item,
+            category: item.category || categoryName,
+          });
+        }
+      }
+    } else if (typeof entry === 'object' && (entry.name || entry.url)) {
+      // Individual service item format: { name: string, url: string, ... }
+      flat.push(entry);
+    }
+  }
+
+  return flat;
+}
+
 export async function fetchConfig(): Promise<AppPublicConfig> {
   const res = await fetch('/api/config');
   if (!res.ok) throw new Error('Failed to load configuration');
@@ -19,10 +46,14 @@ export async function fetchPowerStatus(): Promise<PowerStatus> {
   return res.json();
 }
 
-export async function fetchServices(): Promise<{ services: ServiceItem[] }> {
+export async function fetchServices(): Promise<{ services: ServiceItem[]; checked_at?: string }> {
   const res = await fetch('/api/services');
   if (!res.ok) throw new Error('Failed to fetch services status');
-  return res.json();
+  const data = await res.json();
+  return {
+    ...data,
+    services: normalizeServices(data.services),
+  };
 }
 
 export async function verifyPin(pin: string): Promise<{ session_token?: string; expires_in?: number; error?: string }> {

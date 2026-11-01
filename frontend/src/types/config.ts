@@ -32,9 +32,13 @@ export interface ServiceItem {
   description?: string;
   health_check_url?: string;
   online?: boolean;
+  status?: 'online' | 'offline' | 'degraded';
   response_time_ms?: number;
+  latency_ms?: number;
   status_code?: number;
   error?: string;
+  category?: string;
+  last_checked?: string;
 }
 
 export interface ServiceCategory {
