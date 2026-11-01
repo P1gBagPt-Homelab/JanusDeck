@@ -125,7 +125,7 @@ def find_config_path(explicit_path: Optional[str] = None) -> Path:
     if explicit_path:
         return Path(explicit_path)
 
-    env_path = os.getenv("JANUS_CONFIG_PATH")
+    env_path = os.getenv("JANUS_CONFIG_PATH") or os.getenv("JANUS_CONFIG")
     if env_path and Path(env_path).is_file():
         return Path(env_path)
 

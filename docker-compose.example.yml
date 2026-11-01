@@ -13,7 +13,7 @@ services:
     environment:
       - TZ=UTC
       - JANUS_CONFIG=/app/config.yaml
-      - JANUS_PIN=2070 # Override PIN via environment variable
+      # - JANUS_PIN=2070 # Optional: uncomment only if you want to override the PIN in config.yaml
 
     volumes:
       # Application Configuration
