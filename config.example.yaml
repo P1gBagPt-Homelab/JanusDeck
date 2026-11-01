@@ -11,6 +11,14 @@ server:
   refresh_interval_ms: 2000
 
 # ------------------------------------------------------------------------------
+# Persistent PostgreSQL Database (Dynamic Services)
+# Connects to shared PostgreSQL 18 container on coolify network
+# Override with DATABASE_URL environment variable if desired
+# ------------------------------------------------------------------------------
+database:
+  url: "postgresql+asyncpg://janus:JanusDeckSecure2026!@o4nipot4qcoaskqwss3zf6bq:5432/janusdeck"
+
+# ------------------------------------------------------------------------------
 # Security & Master PIN
 # Guard sensitive power operations (Reboot, Shutdown, Boot to OS).
 # ------------------------------------------------------------------------------

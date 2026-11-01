@@ -17,7 +17,11 @@ services:
     environment:
       - TZ=UTC
       - JANUS_CONFIG=/app/config.yaml
+      - DATABASE_URL=postgresql+asyncpg://janus:JanusDeckSecure2026!@o4nipot4qcoaskqwss3zf6bq:5432/janusdeck
       # - JANUS_PIN=2070 # Optional: uncomment only if you want to override the PIN in config.yaml
+
+    networks:
+      - default
 
     volumes:
       # Application Configuration
@@ -40,3 +44,8 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
+
+networks:
+  default:
+    name: coolify
+    external: true

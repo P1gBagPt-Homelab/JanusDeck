@@ -84,13 +84,21 @@ class TelemetryConfig(BaseModel):
     storage: StorageTelemetryConfig = Field(default_factory=StorageTelemetryConfig)
 
 
+class DatabaseConfig(BaseModel):
+    url: Optional[str] = None
+
+
 class ServiceItem(BaseModel):
+    id: Optional[str] = None
     name: str
     url: str
     external_url: Optional[str] = None
     icon: str = "globe"
     description: Optional[str] = None
     health_check_url: Optional[str] = None
+    category: Optional[str] = None
+    display_order: int = 0
+    is_enabled: bool = True
 
 
 class ServiceCategory(BaseModel):
@@ -100,6 +108,7 @@ class ServiceCategory(BaseModel):
 
 class AppConfig(BaseModel):
     server: ServerConfig = Field(default_factory=ServerConfig)
+    database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     security: SecurityConfig = Field(default_factory=SecurityConfig)
     power: PowerConfig = Field(default_factory=PowerConfig)
     telemetry: TelemetryConfig = Field(default_factory=TelemetryConfig)
@@ -108,7 +117,9 @@ class AppConfig(BaseModel):
     def to_public_dict(self) -> dict:
         """Returns a sanitized dict safe to expose to client/frontend (excluding secrets)."""
         data = self.model_dump()
-        # Strip master PIN from public consumption
+        # Strip master PIN and database secrets from public consumption
+        if "database" in data:
+            del data["database"]
         if "security" in data:
             data["security"] = {
                 "pin_required": data["security"].get("pin_required", True),
@@ -187,6 +198,9 @@ def load_config(path: Optional[str] = None, reload: bool = False) -> AppConfig:
 
     if env_dbus_socket := os.getenv("JANUS_DBUS_SOCKET_PATH"):
         config.power.dbus_socket_path = env_dbus_socket
+
+    if env_db := (os.getenv("DATABASE_URL") or os.getenv("JANUS_DATABASE_URL")):
+        config.database.url = env_db
 
     _cached_config = config
     return config
