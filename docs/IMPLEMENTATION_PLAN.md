@@ -62,19 +62,23 @@ This roadmap provides the exact step-by-step implementation plan for building an
 
 ---
 
-### Phase 3: Frontend Interface (`web/`)
+### Phase 3: Frontend Interface (`web/`) — Powered by Impeccable
 
-1. **Design Specifications**:
-   * Mobile-first responsive layout (works as an installed PWA on iPhone / Android).
-   * Project Janus aesthetic: Slate dark background (`#0b0f19`), neon cyan/violet accents, glassmorphic cards.
+1. **Design System & Craft Workflow (Impeccable)**:
+   * Built and refined using **Impeccable** (`4.8.0`) standards and playbooks (`shape`, `craft-floor`, `audit`, `polish`).
+   * Mode: **Operate / Dashboard** with high-density scanability, purposeful micro-interactions, and pristine responsive ergonomics.
+   * Aesthetic: Project Janus slate dark background (`#0b0f19`), neon cyan/violet accents, glassmorphic card depth with subtle borders, fluid typography, and dark-theme high-contrast gauges.
 2. **Interactive Components**:
-   * **Telemetry Bar**: Circular or horizontal gauge bars for CPU (i7-8700K), RAM (40GB), GPU (RTX 2070), and Disks (LVM + HDD).
-   * **Service Launcher Grid**: Quick links with real-time green/red availability badges.
+   * **Telemetry Bar**: High-refresh circular / horizontal gauge bars for CPU (i7-8700K), RAM (40GB), GPU (RTX 2070), and Disks (LVM + HDD) via SSE.
+   * **Service Launcher Grid**: Quick links with real-time green/red availability badges and resilient fallback states.
    * **Power Control Deck**:
      * 🟢 *Reboot Ubuntu Server*
      * 🛑 *Graceful Shutdown*
      * 🎮 *Switch to Windows Gaming Mode*
-   * **PIN Security Modal**: Keypad input with a 5-second countdown timer allowing user cancellation before execution.
+   * **PIN Security Modal**: Accessible keypad input with 5-second countdown timer allowing user cancellation before execution.
+3. **Quality & Polish Verification**:
+   * Pre-edit craft floor checklist adherence (`reference/craft-floor.md`).
+   * Technical checks (`audit`: a11y, mobile responsive layout, touch target sizing, keyboard navigation).
 
 ---
 
