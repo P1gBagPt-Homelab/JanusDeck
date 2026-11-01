@@ -1,0 +1,36 @@
+services:
+  janus-deck:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: janus-deck:local
+    container_name: janus-deck
+    restart: unless-stopped
+    pid: host # Host PID namespace for bare-metal process and hardware telemetry
+
+    ports:
+      - "8080:8080"
+
+    environment:
+      - TZ=UTC
+      - JANUS_CONFIG=/app/config.yaml
+      - JANUS_PIN=2070 # Override master PIN via environment variable
+
+    volumes:
+      # Application Configuration (Copy config.example.yaml to config.yaml before starting)
+      - ./config.yaml:/app/config.yaml:ro
+
+      # Host systemctl & power management via DBus socket
+      - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket:ro
+
+      # Host GRUB environment for one-shot OS switching (grub-reboot)
+      - /boot:/boot:rw
+
+    # NVIDIA GPU Telemetry Passthrough (Uncomment if NVIDIA GPU is present on host)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
