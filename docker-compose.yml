@@ -9,7 +9,7 @@ services:
     pid: host # Host PID namespace for bare-metal process and hardware telemetry
 
     ports:
-      - "8080:8080"
+      - "${JANUS_HOST_PORT:-8085}:8080"
 
     environment:
       - TZ=UTC
