@@ -1,0 +1,106 @@
+# ==============================================================================
+# JanusDeck Configuration Specification
+# ==============================================================================
+# Copy this file to `config.yaml` and customize for your home server setup.
+
+server:
+  title: "Janus Lab"
+  subtitle: "Hybrid Gaming & On-Demand Server"
+  port: 8080
+  host: "0.0.0.0"
+  refresh_interval_ms: 2000
+
+# ------------------------------------------------------------------------------
+# Security & Master PIN
+# Guard sensitive power operations (Reboot, Shutdown, Boot to OS).
+# ------------------------------------------------------------------------------
+security:
+  pin_required: true
+  master_pin: "2070"        # Set your 4-6 digit numeric PIN or override with JANUS_PIN env
+  session_timeout_seconds: 300
+
+# ------------------------------------------------------------------------------
+# Power Management & Dual-Boot Switcher
+# ------------------------------------------------------------------------------
+power:
+  allow_shutdown: true
+  allow_reboot: true
+  allow_os_switch: true
+  grub_cfg_path: "/boot/grub/grub.cfg"
+  
+  # Available OS targets for one-shot reboot (via grub-reboot)
+  os_targets:
+    - id: "windows"
+      name: "Windows 11 (Gaming)"
+      icon: "gamepad"
+      grub_entry: "Windows Boot Manager (on /dev/nvme0n1p1)"
+      description: "Reboots once into Windows. Automatically reverts to Server on next boot."
+    
+    # Optional second alternative OS (e.g. Bazzite, TrueNAS, Fedora)
+    # - id: "bazzite"
+    #   name: "Bazzite Gaming OS"
+    #   icon: "steam"
+    #   grub_entry: "Bazzite"
+
+# ------------------------------------------------------------------------------
+# Hardware Telemetry Monitoring
+# ------------------------------------------------------------------------------
+telemetry:
+  cpu:
+    enabled: true
+    label: "Intel Core i7-8700K"
+    track_temperatures: true
+  
+  memory:
+    enabled: true
+    label: "DDR4 Memory"
+    total_gb: 40
+  
+  gpu:
+    enabled: true
+    type: "nvidia"          # "nvidia" or "none"
+    label: "NVIDIA GeForce RTX 2070"
+    track_vram: true
+    track_temp: true
+
+  storage:
+    pools:
+      - name: "System (LVM SSD)"
+        path: "/"
+      - name: "Cold Storage (HDD)"
+        path: "/data/storage"
+
+# ------------------------------------------------------------------------------
+# Service Directory / Quick Launchers
+# ------------------------------------------------------------------------------
+services:
+  - category: "Infrastructure & Platform"
+    items:
+      - name: "Coolify PaaS"
+        url: "http://192.168.1.68:8000"
+        external_url: "http://10.8.0.1:8000"
+        icon: "server"
+        description: "Self-hosted Git-push deployment engine"
+        health_check_url: "http://192.168.1.68:8000"
+
+      - name: "WireGuard VPN"
+        url: "http://192.168.1.68:51821"
+        icon: "shield"
+        description: "Encrypted remote gateway & peer dashboard"
+
+  - category: "Monitoring & Knowledge"
+    items:
+      - name: "Docmost Wiki"
+        url: "https://docs.janus-lab.duckdns.org"
+        icon: "book-open"
+        description: "Collaborative homelab documentation"
+
+      - name: "Uptime Kuma"
+        url: "https://status.janus-lab.duckdns.org"
+        icon: "activity"
+        description: "Service uptime status & alerting"
+
+      - name: "Netdata"
+        url: "http://192.168.1.68:19999"
+        icon: "cpu"
+        description: "High-resolution real-time server telemetry"

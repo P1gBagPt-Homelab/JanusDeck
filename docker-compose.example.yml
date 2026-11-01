@@ -1,0 +1,35 @@
+services:
+  janus-deck:
+    image: ghcr.io/your-github-username/janus-deck:latest
+    # Or build locally:
+    # build: .
+    container_name: janus-deck
+    restart: unless-stopped
+    pid: host # Required for bare-metal process and hardware telemetry
+
+    ports:
+      - "8080:8080"
+
+    environment:
+      - TZ=UTC
+      - JANUS_CONFIG=/app/config.yaml
+      - JANUS_PIN=2070 # Override PIN via environment variable
+
+    volumes:
+      # Application Configuration
+      - ./config.yaml:/app/config.yaml:ro
+
+      # Host systemctl & power management via DBus
+      - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket:ro
+
+      # Access to GRUB environment for one-shot OS switching (grub-reboot)
+      - /boot:/boot:rw
+
+    # NVIDIA GPU Telemetry Passthrough (Optional - remove if no NVIDIA GPU)
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
