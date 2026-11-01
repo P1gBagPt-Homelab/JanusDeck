@@ -26,11 +26,11 @@ services:
       # Host GRUB environment for one-shot OS switching (grub-reboot)
       - /boot:/boot:rw
 
-    # NVIDIA GPU Telemetry Passthrough (Uncomment if NVIDIA GPU is present on host)
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: all
-    #           capabilities: [gpu]
+    # NVIDIA GPU Telemetry Passthrough
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
