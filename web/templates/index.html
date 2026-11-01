@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <meta name="theme-color" content="#0b0f19">
+  <meta name="description" content="JanusDeck: Command Deck for Hybrid Gaming & Dual-Boot Home Servers">
+  <title>Janus Lab — JanusDeck</title>
+  
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+
+  <!-- App Header -->
+  <header class="app-header">
+    <div class="container header-inner">
+      <div class="brand-section">
+        <div class="brand-logo" aria-hidden="true">
+          <span data-lucide="zap" data-class="w-5 h-5"></span>
+        </div>
+        <div>
+          <h1 class="brand-title">Janus Lab</h1>
+          <p class="brand-subtitle">Hybrid Gaming &amp; On-Demand Server</p>
+        </div>
+      </div>
+
+      <div class="header-status-group">
+        <!-- Live SSE Heartbeat Status -->
+        <div id="connection-status" class="status-pill online" role="status" aria-live="polite">
+          <span class="pulse-dot"></span>
+          <span class="status-label">Live</span>
+        </div>
+
+        <!-- Host Platform & Kernel Badge -->
+        <div id="host-info" class="host-pill">
+          <span data-lucide="server" data-class="w-3.5 h-3.5 text-cyan-400"></span>
+          <span>Ubuntu Server (Host)</span>
+        </div>
+
+        <!-- System Uptime Badge -->
+        <div class="host-pill" title="Host System Uptime">
+          <span data-lucide="clock" data-class="w-3.5 h-3.5 text-violet-400"></span>
+          <span id="uptime-display" class="tabular-nums">--</span>
+        </div>
+
+        <!-- PIN Session Security Toggle -->
+        <button id="btn-lock-toggle" class="btn-header-lock" aria-label="Toggle PIN security lock state">
+          <span data-lucide="lock" data-class="w-3.5 h-3.5"></span>
+          <span>PIN Guarded</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Dashboard Content -->
+  <main class="container dashboard-main">
+
+    <!-- Staged Next Boot Alert (Shown when GRUB next_entry is scheduled) -->
+    <aside id="staged-banner" class="staged-banner" role="alert" aria-live="assertive" aria-labelledby="staged-heading">
+      <div class="staged-banner-content">
+        <div class="staged-banner-icon">
+          <span data-lucide="gamepad" data-class="w-5 h-5"></span>
+        </div>
+        <div class="staged-banner-text">
+          <h2 id="staged-heading">One-Shot Boot Scheduled: <span id="staged-target-name">Windows Boot Manager</span></h2>
+          <p>The host machine will boot into this operating system upon next reboot. It will automatically revert to Linux afterward.</p>
+        </div>
+      </div>
+      <div class="staged-banner-actions">
+        <button id="btn-clear-next" class="btn btn-secondary" style="font-size:0.8125rem; min-height:36px; padding:0.4rem 0.85rem;">
+          <span data-lucide="x" data-class="w-4 h-4"></span>
+          <span>Cancel &amp; Keep Linux</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- SECTION 1: Hardware Telemetry Deck -->
+    <section aria-labelledby="telemetry-heading">
+      <div class="section-header">
+        <h2 id="telemetry-heading" class="section-title">
+          <span data-lucide="activity" data-class="w-5 h-5"></span>
+          <span>Hardware Telemetry</span>
+        </h2>
+        <span class="section-desc">Live NVML &amp; Kernel Stream</span>
+      </div>
+
+      <div class="telemetry-grid">
+        <!-- CPU Card -->
+        <article class="card-glass telemetry-card">
+          <div class="telemetry-card-header">
+            <div class="telemetry-label-wrap">
+              <h3 class="telemetry-name">CPU Processor</h3>
+              <span class="telemetry-sublabel">Intel Core i7-8700K</span>
+            </div>
+            <div class="telemetry-icon-badge">
+              <span data-lucide="cpu" data-class="w-4 h-4"></span>
+            </div>
+          </div>
+
+          <div class="gauge-wrapper">
+            <svg class="gauge-svg" viewBox="0 0 120 120" aria-hidden="true">
+              <circle class="gauge-bg" cx="60" cy="60" r="48"></circle>
+              <circle id="cpu-gauge-progress" class="gauge-progress cyan" cx="60" cy="60" r="48"
+                      stroke-dasharray="301.59" stroke-dashoffset="301.59"></circle>
+            </svg>
+            <div class="gauge-center-text">
+              <span id="cpu-val" class="gauge-val tabular-nums">0</span>
+              <span class="gauge-unit">% LOAD</span>
+            </div>
+          </div>
+
+          <!-- Per-core visualizer bars -->
+          <div>
+            <div style="display:flex; justify-content:space-between; font-size:0.6875rem; color:var(--text-muted); margin-bottom:2px;">
+              <span>Cores</span>
+              <span id="cpu-freq" class="tabular-nums">-- GHz</span>
+            </div>
+            <div id="cpu-core-grid" class="core-bars-grid" aria-label="Per-core load distribution"></div>
+          </div>
+
+          <div class="telemetry-meta-row">
+            <div class="meta-item">
+              <span class="meta-item-label">Package Temp</span>
+              <span id="cpu-temp-badge" class="temp-badge normal">
+                <span data-lucide="thermometer" data-class="w-3 h-3"></span>
+                <span>--°C</span>
+              </span>
+            </div>
+            <div class="meta-item" style="align-items:flex-end;">
+              <span class="meta-item-label">Cores / Threads</span>
+              <span class="meta-item-val tabular-nums">6C / 12T</span>
+            </div>
+          </div>
+        </article>
+
+        <!-- Memory Card -->
+        <article class="card-glass telemetry-card">
+          <div class="telemetry-card-header">
+            <div class="telemetry-label-wrap">
+              <h3 class="telemetry-name">DDR4 Memory</h3>
+              <span class="telemetry-sublabel">Dual-Channel Pool</span>
+            </div>
+            <div class="telemetry-icon-badge">
+              <span data-lucide="memory" data-class="w-4 h-4"></span>
+            </div>
+          </div>
+
+          <div class="gauge-wrapper">
+            <svg class="gauge-svg" viewBox="0 0 120 120" aria-hidden="true">
+              <circle class="gauge-bg" cx="60" cy="60" r="48"></circle>
+              <circle id="ram-gauge-progress" class="gauge-progress indigo" cx="60" cy="60" r="48"
+                      stroke-dasharray="301.59" stroke-dashoffset="301.59"></circle>
+            </svg>
+            <div class="gauge-center-text">
+              <span id="ram-val" class="gauge-val tabular-nums">0</span>
+              <span class="gauge-unit">% UTILIZED</span>
+            </div>
+          </div>
+
+          <div class="telemetry-meta-row">
+            <div class="meta-item">
+              <span class="meta-item-label">Used / Total</span>
+              <span id="ram-used" class="meta-item-val tabular-nums">-- / 40 GB</span>
+            </div>
+            <div class="meta-item" style="align-items:flex-end;">
+              <span class="meta-item-label">Swap</span>
+              <span id="ram-swap" class="meta-item-val tabular-nums">0%</span>
+            </div>
+          </div>
+        </article>
+
+        <!-- GPU Card -->
+        <article class="card-glass telemetry-card">
+          <div class="telemetry-card-header">
+            <div class="telemetry-label-wrap">
+              <h3 id="gpu-name" class="telemetry-name">RTX 2070</h3>
+              <span class="telemetry-sublabel">NVIDIA NVML</span>
+            </div>
+            <div class="telemetry-icon-badge">
+              <span data-lucide="monitor" data-class="w-4 h-4"></span>
+            </div>
+          </div>
+
+          <div class="gauge-wrapper">
+            <svg class="gauge-svg" viewBox="0 0 120 120" aria-hidden="true">
+              <circle class="gauge-bg" cx="60" cy="60" r="48"></circle>
+              <circle id="gpu-gauge-progress" class="gauge-progress emerald" cx="60" cy="60" r="48"
+                      stroke-dasharray="301.59" stroke-dashoffset="301.59"></circle>
+            </svg>
+            <div class="gauge-center-text">
+              <span id="gpu-val" class="gauge-val tabular-nums">0</span>
+              <span class="gauge-unit">% LOAD</span>
+            </div>
+          </div>
+
+          <div class="telemetry-meta-row">
+            <div class="meta-item">
+              <span class="meta-item-label">VRAM Usage</span>
+              <span id="gpu-vram" class="meta-item-val tabular-nums">-- / 8 GB</span>
+            </div>
+            <div class="meta-item" style="align-items:flex-end;">
+              <span class="meta-item-label">GPU Core</span>
+              <span id="gpu-temp-badge" class="temp-badge normal">
+                <span data-lucide="thermometer" data-class="w-3 h-3"></span>
+                <span>--°C</span>
+              </span>
+            </div>
+          </div>
+        </article>
+
+        <!-- Storage Card -->
+        <article class="card-glass telemetry-card">
+          <div class="telemetry-card-header">
+            <div class="telemetry-label-wrap">
+              <h3 class="telemetry-name">Storage Pools</h3>
+              <span class="telemetry-sublabel">LVM SSD &amp; Hard Disks</span>
+            </div>
+            <div class="telemetry-icon-badge">
+              <span data-lucide="hard-drive" data-class="w-4 h-4"></span>
+            </div>
+          </div>
+
+          <div id="storage-pools-container" style="display:flex; flex-direction:column; gap:0.875rem; justify-content:center; flex:1;">
+            <!-- Rendered dynamically -->
+            <div style="font-size:0.75rem; color:var(--text-muted); text-align:center;">Detecting disk partitions...</div>
+          </div>
+
+          <div class="telemetry-meta-row">
+            <div class="meta-item">
+              <span class="meta-item-label">Health</span>
+              <span class="meta-item-val" style="color:var(--accent-emerald);">Optimal</span>
+            </div>
+            <div class="meta-item" style="align-items:flex-end;">
+              <span class="meta-item-label">Filesystems</span>
+              <span class="meta-item-val">ext4 / LVM</span>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- SECTION 2: Power & OS Dual-Boot Switcher Deck -->
+    <section aria-labelledby="power-deck-heading">
+      <div class="section-header">
+        <h2 id="power-deck-heading" class="section-title">
+          <span data-lucide="power" data-class="w-5 h-5"></span>
+          <span>Power &amp; OS Dual-Boot Deck</span>
+        </h2>
+        <span class="section-desc">PIN Authenticated Host Controls</span>
+      </div>
+
+      <div class="power-grid">
+        <!-- Switch to Windows Gaming Card -->
+        <article class="power-card card-windows">
+          <div>
+            <div class="power-card-top">
+              <div class="power-icon-wrap">
+                <span data-lucide="gamepad" data-class="w-6 h-6"></span>
+              </div>
+              <span class="health-badge up">One-Shot Boot</span>
+            </div>
+            <div class="power-card-body">
+              <h3>Switch to Windows 11</h3>
+              <p>Schedules a one-time reboot into Windows 11 Gaming Mode via GRUB. Automatically reverts to Linux Server on the next boot.</p>
+            </div>
+          </div>
+          <button id="btn-switch-windows" class="btn btn-primary-gaming" aria-label="Trigger one-shot switch to Windows Gaming OS">
+            <span data-lucide="gamepad" data-class="w-4 h-4"></span>
+            <span>Switch to Windows</span>
+          </button>
+        </article>
+
+        <!-- Reboot Linux Server Card -->
+        <article class="power-card card-reboot">
+          <div>
+            <div class="power-card-top">
+              <div class="power-icon-wrap">
+                <span data-lucide="refresh-cw" data-class="w-6 h-6"></span>
+              </div>
+              <span class="health-badge up">systemd login1</span>
+            </div>
+            <div class="power-card-body">
+              <h3>Reboot Ubuntu Server</h3>
+              <p>Performs a clean, orderly restart of the host operating system, flushing storage buffers and restarting homelab containers.</p>
+            </div>
+          </div>
+          <button id="btn-reboot-server" class="btn btn-success" aria-label="Orderly restart of host Ubuntu system">
+            <span data-lucide="refresh-cw" data-class="w-4 h-4"></span>
+            <span>Reboot Server</span>
+          </button>
+        </article>
+
+        <!-- Graceful Host Shutdown Card -->
+        <article class="power-card card-shutdown">
+          <div>
+            <div class="power-card-top">
+              <div class="power-icon-wrap">
+                <span data-lucide="power" data-class="w-6 h-6"></span>
+              </div>
+              <span class="health-badge down">ACPI PowerOff</span>
+            </div>
+            <div class="power-card-body">
+              <h3>Graceful Shutdown</h3>
+              <p>Safely powers down host hardware via systemd D-Bus. Use when taking the physical machine offline for maintenance.</p>
+            </div>
+          </div>
+          <button id="btn-shutdown-server" class="btn btn-danger" aria-label="Execute ACPI poweroff of physical server">
+            <span data-lucide="power" data-class="w-4 h-4"></span>
+            <span>Power Off System</span>
+          </button>
+        </article>
+      </div>
+    </section>
+
+    <!-- SECTION 3: Service Hub & Application Launchers -->
+    <section aria-labelledby="services-heading">
+      <div class="section-header">
+        <h2 id="services-heading" class="section-title">
+          <span data-lucide="server" data-class="w-5 h-5"></span>
+          <span>Service Directory</span>
+        </h2>
+        <div style="display:flex; align-items:center; gap:0.5rem;">
+          <button id="btn-refresh-services" class="btn btn-secondary btn-icon-only" style="width:36px; height:36px;" title="Refresh Health Checks" aria-label="Refresh service health checks">
+            <span data-lucide="refresh-cw" data-class="w-4 h-4"></span>
+          </button>
+        </div>
+      </div>
+
+      <div id="services-container">
+        <!-- Rendered dynamically -->
+        <div style="text-align:center; padding:3rem; color:var(--text-muted);">
+          Loading homelab services...
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- App Footer -->
+  <footer class="app-footer">
+    <div class="container footer-inner">
+      <div>
+        <span>JanusDeck &bull; Project Janus Homelab Command Deck</span>
+      </div>
+      <div>
+        <span>FastAPI &bull; systemd D-Bus &bull; GNU GRUB &bull; MIT License</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- PIN Security & 5-Second Cancellation Modal -->
+  <div id="security-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h2 id="modal-title" class="modal-title">
+          <span data-lucide="lock" data-class="w-5 h-5 text-cyan-400"></span>
+          <span>Security Verification</span>
+        </h2>
+        <button id="btn-close-modal" class="btn-modal-close" aria-label="Close modal window">
+          <span data-lucide="x" data-class="w-5 h-5"></span>
+        </button>
+      </div>
+
+      <!-- VIEW 1: Numeric Keypad Entry -->
+      <div id="pin-keypad-view">
+        <div class="pin-display-wrap">
+          <p style="font-size:0.8125rem; color:var(--text-secondary); text-align:center;">Enter your master PIN to authorize host power action</p>
+          
+          <div class="pin-dots" aria-label="PIN digits entered">
+            <div class="pin-dot"></div>
+            <div class="pin-dot"></div>
+            <div class="pin-dot"></div>
+            <div class="pin-dot"></div>
+          </div>
+        </div>
+
+        <div id="lockout-msg" class="lockout-msg">
+          Security lockout active. Try again in <span id="lockout-countdown" class="tabular-nums">60</span>s.
+        </div>
+
+        <div class="keypad-grid" style="margin-top:1.25rem;">
+          <button type="button" class="keypad-btn" data-digit="1">1</button>
+          <button type="button" class="keypad-btn" data-digit="2">2</button>
+          <button type="button" class="keypad-btn" data-digit="3">3</button>
+          <button type="button" class="keypad-btn" data-digit="4">4</button>
+          <button type="button" class="keypad-btn" data-digit="5">5</button>
+          <button type="button" class="keypad-btn" data-digit="6">6</button>
+          <button type="button" class="keypad-btn" data-digit="7">7</button>
+          <button type="button" class="keypad-btn" data-digit="8">8</button>
+          <button type="button" class="keypad-btn" data-digit="9">9</button>
+          <button type="button" class="keypad-btn action-btn" data-action="clear" aria-label="Clear PIN">C</button>
+          <button type="button" class="keypad-btn" data-digit="0">0</button>
+          <button type="button" class="keypad-btn action-btn" data-action="backspace" aria-label="Backspace">⌫</button>
+        </div>
+      </div>
+
+      <!-- VIEW 2: 5-Second Execution Countdown Gate with Abort -->
+      <div id="countdown-view" class="countdown-view">
+        <div class="countdown-circle-wrap">
+          <svg class="countdown-svg" viewBox="0 0 100 100" aria-hidden="true">
+            <circle class="countdown-bg" cx="50" cy="50" r="44"></circle>
+            <circle id="countdown-progress-circle" class="countdown-progress" cx="50" cy="50" r="44"
+                    stroke-dasharray="276.46" stroke-dashoffset="0"></circle>
+          </svg>
+          <div id="countdown-num" class="countdown-num tabular-nums">5</div>
+        </div>
+
+        <div>
+          <h3 id="countdown-target-label" class="countdown-target-name">Power Operation</h3>
+          <p class="countdown-warning-note" style="margin-top:0.35rem;">
+            Executing in <span class="tabular-nums">5</span> seconds. Tap below to abort anytime before execution.
+          </p>
+        </div>
+
+        <button id="btn-abort-action" class="btn-abort" aria-label="Abort this power operation immediately">
+          Abort Action
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <!-- Scripts -->
+  <script src="/static/js/icons.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

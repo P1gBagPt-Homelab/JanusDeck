@@ -59,9 +59,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Ensure web directories exist
-STATIC_DIR = Path("web/static")
-TEMPLATES_DIR = Path("web/templates")
+# Ensure web directories exist relative to project root
+BASE_DIR = Path(__file__).resolve().parent.parent
+STATIC_DIR = BASE_DIR / "web" / "static"
+TEMPLATES_DIR = BASE_DIR / "web" / "templates"
 STATIC_DIR.mkdir(parents=True, exist_ok=True)
 TEMPLATES_DIR.mkdir(parents=True, exist_ok=True)
 
