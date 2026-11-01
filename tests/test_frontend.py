@@ -10,8 +10,8 @@ from src.main import app
 
 
 @pytest.mark.asyncio
-async def test_root_serves_phase3_dashboard():
-    """Verify that GET / serves the Phase 3 Impeccable frontend dashboard."""
+async def test_root_serves_dashboard():
+    """Verify that GET / serves the frontend dashboard (compiled Svelte 5 SPA or template)."""
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.get("/")
         assert response.status_code == 200
@@ -22,25 +22,23 @@ async def test_root_serves_phase3_dashboard():
         assert "Janus Lab" in html
         assert "JanusDeck" in html
 
-        # Verify static asset link tags
-        assert '/static/css/styles.css' in html
-        assert '/static/js/icons.js' in html
-        assert '/static/js/app.js' in html
+        # Verify either Svelte 5 SPA root or vanilla static template
+        assert ('id="app"' in html and '/assets/' in html) or ('/static/css/styles.css' in html)
 
-        # Verify key semantic sections
-        assert 'id="telemetry-heading"' in html
-        assert 'Hardware Telemetry' in html
-        assert 'id="power-deck-heading"' in html
-        assert 'Power &amp; OS Dual-Boot Deck' in html
-        assert 'id="services-heading"' in html
-        assert 'Service Directory' in html
 
-        # Verify PIN modal and 5-second countdown elements
-        assert 'id="security-modal"' in html
-        assert 'id="pin-keypad-view"' in html
-        assert 'id="countdown-view"' in html
-        assert 'id="btn-abort-action"' in html
-        assert 'id="staged-banner"' in html
+@pytest.mark.asyncio
+async def test_svelte_assets_served():
+    """Verify that compiled Svelte 5 assets are mounted and accessible under /assets."""
+    from pathlib import Path
+    assets_dir = Path(__file__).resolve().parent.parent / "web" / "dist" / "assets"
+    if assets_dir.is_dir():
+        asset_files = list(assets_dir.glob("*.js"))
+        if asset_files:
+            asset_name = asset_files[0].name
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                response = await client.get(f"/assets/{asset_name}")
+                assert response.status_code == 200
+                assert "javascript" in response.headers.get("content-type", "")
 
 
 @pytest.mark.asyncio

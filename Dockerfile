@@ -2,9 +2,24 @@
 # ==============================================================================
 # JanusDeck: Production Dockerfile
 # Multi-Arch Ready: linux/amd64, linux/arm64
-# Base: python:3.12-slim-bookworm for minimal attack surface (<150 MB)
+# Multi-Stage Build: Node.js (Svelte 5) -> Python 3.12-slim-bookworm runtime
 # ==============================================================================
 
+# ------------------------------------------------------------------------------
+# Stage 1: Svelte 5 SPA Frontend Builder
+# ------------------------------------------------------------------------------
+FROM node:22-slim AS frontend-builder
+WORKDIR /app/frontend
+
+COPY frontend/package*.json ./
+RUN npm ci
+
+COPY frontend/ ./
+RUN npm run build
+
+# ------------------------------------------------------------------------------
+# Stage 2: Minimal Python 3.12 Runtime
+# ------------------------------------------------------------------------------
 FROM python:3.12-slim-bookworm
 
 LABEL org.opencontainers.image.title="JanusDeck" \
@@ -44,6 +59,8 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 COPY config.example.yaml /app/config.example.yaml
 COPY src/ /app/src/
 COPY web/ /app/web/
+# Copy compiled Svelte 5 SPA from frontend-builder stage
+COPY --from=frontend-builder /app/web/dist /app/web/dist
 
 EXPOSE 8080
 
