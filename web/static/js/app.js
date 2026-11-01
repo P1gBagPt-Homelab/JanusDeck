@@ -611,24 +611,28 @@
   }
 
   function updatePinDots() {
-    elements.pinDots.forEach((dot, idx) => {
-      if (idx < state.pinBuffer.length) {
-        dot.classList.add('filled');
-      } else {
-        dot.classList.remove('filled');
+    const dotsWrap = document.querySelector('.pin-dots');
+    const btnSubmit = document.getElementById('btn-submit-pin');
+    const len = state.pinBuffer.length;
+
+    if (dotsWrap) {
+      const displayCount = Math.max(4, len);
+      let dotsHtml = '';
+      for (let i = 0; i < displayCount; i++) {
+        dotsHtml += `<div class="pin-dot ${i < len ? 'filled' : ''}"></div>`;
       }
-    });
+      dotsWrap.innerHTML = dotsHtml;
+    }
+
+    if (btnSubmit) {
+      btnSubmit.disabled = len === 0;
+    }
   }
 
   function handleKeypadInput(digit) {
-    if (state.pinBuffer.length >= 6) return;
+    if (state.pinBuffer.length >= 32) return;
     state.pinBuffer += digit;
     updatePinDots();
-
-    // Auto verify once 4 to 6 digits reached (standard length)
-    if (state.pinBuffer.length >= 4) {
-      verifyPinAttempt();
-    }
   }
 
   function handleKeypadBackspace() {
@@ -961,6 +965,16 @@
     }
 
     // 8. Keypad button clicks
+    const btnSubmitPin = document.getElementById('btn-submit-pin');
+    if (btnSubmitPin) {
+      btnSubmitPin.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (state.pinBuffer.length > 0) {
+          verifyPinAttempt();
+        }
+      });
+    }
+
     document.querySelectorAll('.keypad-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.preventDefault();
@@ -999,6 +1013,10 @@
           handleKeypadBackspace();
         } else if (e.key === 'Delete' || e.key === 'c' || e.key === 'C') {
           handleKeypadClear();
+        } else if (e.key === 'Enter') {
+          if (state.pinBuffer.length > 0) {
+            verifyPinAttempt();
+          }
         }
       }
     });

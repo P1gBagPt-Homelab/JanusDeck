@@ -1094,17 +1094,20 @@ svg.lucide, .lucide {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
   min-height: 36px;
+  flex-wrap: wrap;
+  max-width: 320px;
 }
 
 .pin-dot {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   border: 2px solid var(--border-medium);
   background: transparent;
   transition: all 0.15s ease;
+  flex-shrink: 0;
 }
 
 .pin-dot.filled {
