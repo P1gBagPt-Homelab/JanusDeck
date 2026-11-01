@@ -196,6 +196,7 @@
       <div class="flex flex-col gap-3 justify-center flex-1">
         {#if storagePools.length > 0}
           {#each storagePools as pool}
+            {@const isAvailable = pool.available !== false}
             {@const pct = Math.round(pool.usage_percent ?? 0)}
             {@const freeGb = pool.free_gb != null ? Math.round(pool.free_gb) : '--'}
             {@const totalGb = pool.total_gb != null ? Math.round(pool.total_gb) : '--'}
@@ -206,20 +207,31 @@
                   <HardDrive class="w-3.5 h-3.5 text-sky-400 flex-shrink-0" />
                   <span class="truncate">{pool.name || pool.path}</span>
                 </span>
-                <span class="tabular-nums text-slate-300 text-[11px]">
-                  {pct}% ({freeGb} GB free)
-                </span>
+                {#if isAvailable}
+                  <span class="tabular-nums text-slate-300 text-[11px]">
+                    {pct}% ({freeGb} GB free)
+                  </span>
+                {:else}
+                  <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-rose-500/15 border border-rose-500/30 text-rose-300" title={pool.error || `Path '${pool.path}' not mounted into container`}>
+                    Not Mounted
+                  </span>
+                {/if}
               </div>
               <div class="h-2 rounded-full bg-white/[0.08] overflow-hidden relative">
                 <div
                   class="h-full rounded-full transition-all duration-500
-                  {isWarn ? 'bg-amber-400' : 'bg-sky-400'}"
-                  style="width: {pct}%;"
+                  {isAvailable ? (isWarn ? 'bg-amber-400' : 'bg-sky-400') : 'bg-slate-700'}"
+                  style="width: {isAvailable ? pct : 0}%;"
                 ></div>
               </div>
               <div class="flex justify-between text-[10px] text-slate-400 tabular-nums">
-                <span>Used: {pool.used_gb != null ? `${pool.used_gb.toFixed(1)} GB` : '--'}</span>
-                <span>Total: {totalGb} GB</span>
+                {#if isAvailable}
+                  <span>Used: {pool.used_gb != null ? `${pool.used_gb.toFixed(1)} GB` : '--'}</span>
+                  <span>Total: {totalGb} GB</span>
+                {:else}
+                  <span class="text-slate-500 italic">Mount {pool.path} to monitor</span>
+                  <span class="text-slate-500">--</span>
+                {/if}
               </div>
             </div>
           {/each}

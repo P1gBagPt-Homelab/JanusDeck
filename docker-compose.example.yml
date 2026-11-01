@@ -29,6 +29,9 @@ services:
       # Access to GRUB environment for one-shot OS switching (grub-reboot)
       - /boot:/boot:rw
 
+      # Storage telemetry: Mount host storage pools read-only to monitor disk usage
+      - /data/storage:/data/storage:ro
+
     # NVIDIA GPU Telemetry Passthrough (Optional - remove if no NVIDIA GPU)
     deploy:
       resources:
