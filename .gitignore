@@ -11,7 +11,7 @@ __pycache__/
 build/
 develop-eggs/
 dist/
-!web/dist/
+!frontend/dist/
 downloads/
 eggs/
 .eggs/
@@ -50,7 +50,6 @@ Thumbs.db
 
 # Frontend build & node
 node_modules/
-frontend/dist/
 .vite/
 
 # Logs

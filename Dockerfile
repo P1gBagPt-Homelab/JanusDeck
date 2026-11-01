@@ -58,9 +58,8 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 COPY config.example.yaml /app/config.example.yaml
 COPY src/ /app/src/
-COPY web/ /app/web/
 # Copy compiled Svelte 5 SPA from frontend-builder stage
-COPY --from=frontend-builder /app/web/dist /app/web/dist
+COPY --from=frontend-builder /app/frontend/dist /app/frontend/dist
 
 EXPOSE 8080
 
