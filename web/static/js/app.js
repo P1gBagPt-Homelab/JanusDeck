@@ -248,7 +248,7 @@
     // 2. CPU
     if (metrics.cpu) {
       const cpu = metrics.cpu;
-      const load = Math.round(cpu.overall_percent || 0);
+      const load = Math.round(cpu.usage_percent != null ? cpu.usage_percent : (cpu.overall_percent || 0));
       if (elements.cpuVal) elements.cpuVal.textContent = load;
 
       let cpuClass = 'cyan';
@@ -256,22 +256,24 @@
       else if (load > 65) cpuClass = 'amber';
       updateCircularGauge(elements.cpuGauge, load, cpuClass);
 
-      if (elements.cpuFreq && cpu.frequency_current) {
-        const ghz = (cpu.frequency_current / 1000).toFixed(2);
+      const freqMhz = (cpu.frequency && cpu.frequency.current_mhz) || cpu.frequency_current;
+      if (elements.cpuFreq && freqMhz) {
+        const ghz = (freqMhz > 100 ? (freqMhz / 1000) : freqMhz).toFixed(2);
         elements.cpuFreq.textContent = `${ghz} GHz`;
       }
 
       if (elements.cpuTempBadge) {
-        if (cpu.temperature_celsius != null) {
-          const temp = Math.round(cpu.temperature_celsius);
+        const temp = cpu.temperature_c != null ? cpu.temperature_c : cpu.temperature_celsius;
+        if (temp != null) {
+          const roundedTemp = Math.round(temp);
           let tempClass = 'normal';
-          if (temp >= 80) tempClass = 'hot';
-          else if (temp >= 65) tempClass = 'warm';
+          if (roundedTemp >= 80) tempClass = 'hot';
+          else if (roundedTemp >= 65) tempClass = 'warm';
 
           elements.cpuTempBadge.className = `temp-badge ${tempClass}`;
           elements.cpuTempBadge.innerHTML = `
             ${window.JanusIcons ? window.JanusIcons.get('thermometer', 'w-3 h-3') : ''}
-            <span>${temp}°C</span>
+            <span>${roundedTemp}°C</span>
           `;
           elements.cpuTempBadge.style.display = 'inline-flex';
         } else {
@@ -280,8 +282,9 @@
       }
 
       // Per-core visualizer
-      if (elements.cpuCoreGrid && cpu.per_cpu && Array.isArray(cpu.per_cpu)) {
-        elements.cpuCoreGrid.innerHTML = cpu.per_cpu.slice(0, 12).map((val) => {
+      const coreList = cpu.per_core_percent || cpu.per_cpu;
+      if (elements.cpuCoreGrid && Array.isArray(coreList)) {
+        elements.cpuCoreGrid.innerHTML = coreList.slice(0, 12).map((val) => {
           const pct = Math.max(0, Math.min(100, Math.round(val)));
           let color = 'var(--accent-cyan)';
           if (pct > 80) color = 'var(--accent-rose)';
@@ -294,22 +297,23 @@
     // 3. RAM
     if (metrics.memory) {
       const mem = metrics.memory;
-      const load = Math.round(mem.percent || 0);
+      const load = Math.round(mem.usage_percent != null ? mem.usage_percent : (mem.percent || 0));
       if (elements.ramVal) elements.ramVal.textContent = load;
 
-      let memClass = 'violet';
+      let memClass = 'indigo';
       if (load > 90) memClass = 'rose';
       else if (load > 75) memClass = 'amber';
       updateCircularGauge(elements.ramGauge, load, memClass);
 
       if (elements.ramUsed) {
-        const usedGb = (mem.used_bytes / (1024 ** 3)).toFixed(1);
-        const totalGb = Math.round(mem.total_bytes / (1024 ** 3));
+        const usedGb = mem.used_gb != null ? mem.used_gb.toFixed(1) : (mem.used_bytes ? (mem.used_bytes / (1024 ** 3)).toFixed(1) : '--');
+        const totalGb = mem.total_gb != null ? Math.round(mem.total_gb) : (mem.total_bytes ? Math.round(mem.total_bytes / (1024 ** 3)) : '--');
         elements.ramUsed.textContent = `${usedGb} / ${totalGb} GB`;
       }
 
       if (elements.ramSwap) {
-        elements.ramSwap.textContent = `${Math.round(mem.swap_percent || 0)}%`;
+        const swapPct = (mem.swap && mem.swap.usage_percent != null) ? mem.swap.usage_percent : (mem.swap_percent || 0);
+        elements.ramSwap.textContent = `${Math.round(swapPct)}%`;
       }
     }
 
@@ -317,7 +321,7 @@
     if (metrics.gpu) {
       const gpu = metrics.gpu;
       if (gpu.available) {
-        const load = Math.round(gpu.load_percent || 0);
+        const load = Math.round(gpu.usage_percent != null ? gpu.usage_percent : (gpu.load_percent || 0));
         if (elements.gpuVal) elements.gpuVal.textContent = load;
 
         let gpuClass = 'emerald';
@@ -325,35 +329,47 @@
         else if (load > 60) gpuClass = 'amber';
         updateCircularGauge(elements.gpuGauge, load, gpuClass);
 
-        if (elements.gpuName && gpu.name) {
-          elements.gpuName.textContent = gpu.name.replace('NVIDIA GeForce ', '');
+        if (elements.gpuName) {
+          const rawName = gpu.device_name || gpu.label || gpu.name || 'RTX 2070';
+          elements.gpuName.textContent = rawName.replace('NVIDIA GeForce ', '');
         }
 
         if (elements.gpuVram) {
-          const usedGb = (gpu.memory_used_bytes / (1024 ** 3)).toFixed(1);
-          const totalGb = Math.round(gpu.memory_total_bytes / (1024 ** 3));
+          let usedGb = '--';
+          let totalGb = '--';
+          if (gpu.vram) {
+            usedGb = gpu.vram.used_gb != null ? gpu.vram.used_gb.toFixed(1) : (gpu.vram.used_bytes ? (gpu.vram.used_bytes / (1024 ** 3)).toFixed(1) : '--');
+            totalGb = gpu.vram.total_gb != null ? Math.round(gpu.vram.total_gb) : (gpu.vram.total_bytes ? Math.round(gpu.vram.total_bytes / (1024 ** 3)) : '--');
+          } else if (gpu.memory_used_bytes && gpu.memory_total_bytes) {
+            usedGb = (gpu.memory_used_bytes / (1024 ** 3)).toFixed(1);
+            totalGb = Math.round(gpu.memory_total_bytes / (1024 ** 3));
+          }
           elements.gpuVram.textContent = `${usedGb} / ${totalGb} GB`;
         }
 
         if (elements.gpuTempBadge) {
-          if (gpu.temperature_celsius != null) {
-            const temp = Math.round(gpu.temperature_celsius);
+          const temp = gpu.temperature_c != null ? gpu.temperature_c : gpu.temperature_celsius;
+          if (temp != null) {
+            const roundedTemp = Math.round(temp);
             let tempClass = 'normal';
-            if (temp >= 82) tempClass = 'hot';
-            else if (temp >= 70) tempClass = 'warm';
+            if (roundedTemp >= 82) tempClass = 'hot';
+            else if (roundedTemp >= 70) tempClass = 'warm';
 
             elements.gpuTempBadge.className = `temp-badge ${tempClass}`;
             elements.gpuTempBadge.innerHTML = `
               ${window.JanusIcons ? window.JanusIcons.get('thermometer', 'w-3 h-3') : ''}
-              <span>${temp}°C</span>
+              <span>${roundedTemp}°C</span>
             `;
             elements.gpuTempBadge.style.display = 'inline-flex';
+          } else {
+            elements.gpuTempBadge.style.display = 'none';
           }
         }
 
         if (elements.gpuPower) {
-          if (gpu.power_usage_w != null) {
-            elements.gpuPower.textContent = `${Math.round(gpu.power_usage_w)}W`;
+          const pWatts = gpu.power_watts != null ? gpu.power_watts : gpu.power_usage_w;
+          if (pWatts != null) {
+            elements.gpuPower.textContent = `${Math.round(pWatts)}W`;
           } else {
             elements.gpuPower.textContent = '--';
           }
@@ -362,27 +378,31 @@
         // GPU unavailable or idle server mode
         if (elements.gpuVal) elements.gpuVal.textContent = '0';
         updateCircularGauge(elements.gpuGauge, 0, 'emerald');
-        if (elements.gpuName) elements.gpuName.textContent = 'GPU Idle / Headless';
-        if (elements.gpuVram) elements.gpuVram.textContent = 'Offline';
+        if (elements.gpuName) elements.gpuName.textContent = gpu.label || 'RTX 2070 (Idle)';
+        if (elements.gpuVram) elements.gpuVram.textContent = 'Standby / NVML Off';
         if (elements.gpuTempBadge) elements.gpuTempBadge.style.display = 'none';
         if (elements.gpuPower) elements.gpuPower.textContent = '--';
       }
     }
 
     // 5. Storage Pools
-    if (metrics.storage && Array.isArray(metrics.storage) && elements.storageContainer) {
-      elements.storageContainer.innerHTML = metrics.storage.map(pool => {
-        const pct = Math.round(pool.percent || 0);
-        const usedStr = formatBytes(pool.used_bytes);
-        const totalStr = formatBytes(pool.total_bytes);
-        const freeStr = formatBytes(pool.free_bytes);
+    const pools = (metrics.storage && Array.isArray(metrics.storage.pools)) 
+      ? metrics.storage.pools 
+      : (Array.isArray(metrics.storage) ? metrics.storage : null);
+
+    if (pools && elements.storageContainer) {
+      elements.storageContainer.innerHTML = pools.map(pool => {
+        const pct = Math.round(pool.usage_percent != null ? pool.usage_percent : (pool.percent || 0));
+        const freeStr = pool.free_gb != null ? `${Math.round(pool.free_gb)} GB` : formatBytes(pool.free_bytes);
+        const usedStr = pool.used_gb != null ? `${pool.used_gb.toFixed(1)} GB` : formatBytes(pool.used_bytes);
+        const totalStr = pool.total_gb != null ? `${Math.round(pool.total_gb)} GB` : formatBytes(pool.total_bytes);
         const isWarn = pct > 85;
 
         return `
           <div class="linear-progress-wrapper">
             <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem;">
               <span style="font-weight:600; color:var(--text-primary); display:flex; align-items:center; gap:0.35rem;">
-                ${window.JanusIcons ? window.JanusIcons.get('hard-drive', 'w-3.5 h-3.5 text-cyan-400') : ''}
+                ${window.JanusIcons ? window.JanusIcons.get('hard-drive', 'w-3.5 h-3.5') : ''}
                 ${escapeHtml(pool.name || pool.path)}
               </span>
               <span class="tabular-nums" style="color:var(--text-secondary);">${pct}% (${freeStr} free)</span>

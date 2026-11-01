@@ -38,7 +38,11 @@
   function getIcon(name, className = 'w-5 h-5') {
     const key = (name || '').toLowerCase().trim();
     const svgInner = ICONS[key] || ICONS['activity'];
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-${key} ${className}">${svgInner}</svg>`;
+    let size = 20;
+    if (className.includes('w-3.5') || className.includes('w-3')) size = 14;
+    else if (className.includes('w-4')) size = 16;
+    else if (className.includes('w-6')) size = 24;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-${key} ${className}">${svgInner}</svg>`;
   }
 
   window.JanusIcons = {
