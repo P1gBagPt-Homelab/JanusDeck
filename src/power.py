@@ -93,6 +93,7 @@ class PowerService:
             return record
 
         # 1. Strategy A: dbus-send
+        last_apparmor_error: Optional[str] = None
         dbus_send_bin = shutil.which("dbus-send")
         if dbus_send_bin:
             cmd = [
@@ -123,10 +124,13 @@ class PowerService:
                     }
                     self.action_history.append(record)
                     return record
+                err_text = stderr.decode().strip()
+                if "apparmor" in err_text.lower():
+                    last_apparmor_error = err_text
                 logger.warning(
                     "dbus-send returned code %d: %s. Trying fallback.",
                     proc.returncode,
-                    stderr.decode().strip(),
+                    err_text,
                 )
             except Exception as exc:
                 logger.warning("dbus-send execution error: %s. Trying fallback.", exc)
@@ -163,6 +167,9 @@ class PowerService:
                     }
                     self.action_history.append(record)
                     return record
+                err_text = stderr.decode().strip()
+                if "apparmor" in err_text.lower():
+                    last_apparmor_error = err_text
             except Exception as exc:
                 logger.warning("busctl execution error: %s", exc)
 
@@ -194,10 +201,17 @@ class PowerService:
                 logger.warning("systemctl execution error: %s", exc)
 
         # If all methods failed
-        err_msg = (
-            f"Failed to execute DBus {method_name}. Ensure dbus-send, busctl, or systemctl "
-            f"is installed and /var/run/dbus/system_bus_socket is mounted."
-        )
+        if last_apparmor_error:
+            err_msg = (
+                f"Failed to execute DBus {method_name}: Host AppArmor policy blocked DBus message "
+                f"({last_apparmor_error}). Ensure the container runs unconfined by setting "
+                f"'security_opt: [apparmor:unconfined]' or enabling Privileged container in Coolify."
+            )
+        else:
+            err_msg = (
+                f"Failed to execute DBus {method_name}. Ensure dbus-send, busctl, or systemctl "
+                f"is installed and /var/run/dbus/system_bus_socket is mounted."
+            )
         logger.error(err_msg)
         raise RuntimeError(err_msg)
 

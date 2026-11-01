@@ -8,6 +8,10 @@ services:
     restart: unless-stopped
     pid: host # Host PID namespace for bare-metal process and hardware telemetry
 
+    # Required for host DBus system bus access on Ubuntu/Debian (bypasses docker-default AppArmor)
+    security_opt:
+      - apparmor:unconfined
+
     ports:
       - "${JANUS_HOST_PORT:-8085}:8080"
 

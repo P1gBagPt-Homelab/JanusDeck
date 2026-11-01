@@ -7,6 +7,10 @@ services:
     restart: unless-stopped
     pid: host # Required for bare-metal process and hardware telemetry
 
+    # Required for host DBus system bus access on Ubuntu/Debian (bypasses docker-default AppArmor)
+    security_opt:
+      - apparmor:unconfined
+
     ports:
       - "8080:8080"
 
