@@ -12,12 +12,13 @@ JanusDeck is the command deck and mobile dashboard for hybrid gaming and dual-bo
 1. **Live Telemetry & Diagnostics**: Inspect real-time CPU load/frequency/temp, RAM & Swap utilization, GPU VRAM/temperature/load, and storage pools via SSE.
 2. **One-Shot OS Switching**: Select Windows 11 (or alternative OS target), enter PIN, review 5-second cancellation window, and reboot. On subsequent reboot from Windows, GRUB naturally returns to Linux Server.
 3. **Protected Host Power Actions**: Reboot Ubuntu Server or trigger ACPI graceful shutdown via systemd D-Bus, guarded by master PIN authentication and countdown abort.
-4. **Service Navigation & Health Monitoring**: Scan homelab bookmarks (Coolify, WireGuard, Docmost, Uptime Kuma) with automated HTTP health check indicators (online/offline latency).
+4. **Service Directory & Dynamic Management**: Manage homelab bookmarks (Coolify, WireGuard, Docmost, Uptime Kuma, Vaultwarden, etc.) with automated HTTP health check indicators (online/offline latency). Dynamically register, edit, and organize services with persistent PostgreSQL 18 database storage and master PIN protection.
 
 ## Platform & Stack
 - **Platform**: Web (mobile-responsive and desktop dashboard).
-- **Backend**: FastAPI (Python 3.12), `psutil`, `pynvml`, systemd D-Bus, `grub-editenv`.
-- **Frontend**: Vanilla ES6 + Tailwind CSS design system + SVG icons (Lucide system), SSE event streaming. Zero heavy frontend build dependencies required inside the runtime container.
+- **Backend**: FastAPI (Python 3.12), SQLAlchemy 2.0 (async), asyncpg, `psutil`, `pynvml`, systemd D-Bus, `grub-editenv`.
+- **Database**: PostgreSQL 18 (multi-tenant shared homelab database on `coolify` network).
+- **Frontend**: Svelte 5 (Runes) + Tailwind CSS design system + Lucide icons, SSE event streaming. Precompiled production assets served directly by FastAPI.
 - **Security**: Master PIN authentication, session token caching, constant-time verification, brute-force rate-limiting lockout.
 
 ## Constraints & Invariants

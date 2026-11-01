@@ -1,7 +1,9 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { store } from '../lib/stores.svelte';
-  import { fetchServices, normalizeServices } from '../lib/api';
+  import { fetchServices, fetchCategories, deleteService, normalizeServices } from '../lib/api';
   import type { ServiceItem } from '../types/config';
+  import ServiceModal from './ServiceModal.svelte';
   import {
     Server,
     Shield,
@@ -20,10 +22,18 @@
     Cloud,
     Lock,
     Boxes,
-    Gauge
+    Gauge,
+    Plus,
+    Pencil,
+    Trash2,
+    SlidersHorizontal
   } from '@lucide/svelte';
 
   let copiedUrl = $state<string | null>(null);
+  let isModalOpen = $state(false);
+  let editingService = $state<ServiceItem | null>(null);
+  let isManageMode = $state(false);
+  let categoriesList = $state<string[]>([]);
 
   // Group services by category
   const categories = $derived.by(() => {
@@ -37,17 +47,62 @@
     return map;
   });
 
+  onMount(async () => {
+    try {
+      categoriesList = await fetchCategories();
+    } catch {}
+  });
+
   async function refreshHealth() {
     store.isCheckingServices = true;
     try {
-      const res = await fetchServices();
+      const [res, cats] = await Promise.all([
+        fetchServices(),
+        fetchCategories().catch(() => []),
+      ]);
       store.services = normalizeServices(res.services);
+      if (cats && cats.length > 0) {
+        categoriesList = cats;
+      }
       store.addToast('Service health checks updated', 'success');
     } catch {
       store.addToast('Failed to check services availability', 'error');
     } finally {
       store.isCheckingServices = false;
     }
+  }
+
+  function openAddModal() {
+    editingService = null;
+    isModalOpen = true;
+  }
+
+  function openEditModal(svc: ServiceItem, e: MouseEvent) {
+    e.stopPropagation();
+    editingService = svc;
+    isModalOpen = true;
+  }
+
+  async function handleDelete(svc: ServiceItem, e: MouseEvent) {
+    e.stopPropagation();
+    if (!svc.id) {
+      store.addToast('Static configuration items cannot be deleted directly.', 'error');
+      return;
+    }
+    if (!confirm(`Are you sure you want to remove "${svc.name}" from your service directory?`)) {
+      return;
+    }
+    try {
+      await deleteService(svc.id);
+      store.addToast(`Removed service "${svc.name}"`, 'info');
+      await refreshHealth();
+    } catch (err: any) {
+      store.addToast(err.message || 'Failed to delete service', 'error');
+    }
+  }
+
+  async function handleSaved() {
+    await refreshHealth();
   }
 
   function handleOpen(url?: string) {
@@ -107,20 +162,46 @@
 </script>
 
 <section aria-labelledby="services-heading" class="flex flex-col gap-4">
-  <div class="flex items-center justify-between">
+  <div class="flex items-center justify-between flex-wrap gap-2">
     <h2 id="services-heading" class="text-xl font-bold tracking-tight text-white flex items-center gap-2.5">
       <Server class="w-5 h-5 text-sky-400" />
       <span>Service Directory</span>
     </h2>
-    <button
-      type="button"
-      onclick={refreshHealth}
-      class="w-9 h-9 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.08] text-slate-300 flex items-center justify-center transition-all cursor-pointer"
-      title="Refresh Health Checks"
-      aria-label="Refresh service health checks"
-    >
-      <RotateCw class="w-4 h-4 {store.isCheckingServices ? 'animate-spin text-sky-400' : ''}" />
-    </button>
+
+    <div class="flex items-center gap-2">
+      <!-- Add Service Button -->
+      <button
+        type="button"
+        onclick={openAddModal}
+        class="h-9 px-3 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 border border-sky-400/30 hover:border-sky-400/60 text-sky-300 flex items-center gap-1.5 text-xs font-semibold transition-all cursor-pointer shadow-sm"
+        title="Add Service to Homelab Directory"
+      >
+        <Plus class="w-3.5 h-3.5" />
+        <span>Add Service</span>
+      </button>
+
+      <!-- Manage Toggle Button -->
+      <button
+        type="button"
+        onclick={() => isManageMode = !isManageMode}
+        class="h-9 px-3 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer {isManageMode ? 'bg-amber-500/20 border-amber-400/50 text-amber-300' : 'bg-white/[0.05] hover:bg-white/[0.1] border-white/[0.08] text-slate-300'}"
+        title="Toggle Service Edit & Delete controls"
+      >
+        <SlidersHorizontal class="w-3.5 h-3.5" />
+        <span class="hidden sm:inline">{isManageMode ? 'Done' : 'Manage'}</span>
+      </button>
+
+      <!-- Refresh Health Checks Button -->
+      <button
+        type="button"
+        onclick={refreshHealth}
+        class="w-9 h-9 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.08] text-slate-300 flex items-center justify-center transition-all cursor-pointer"
+        title="Refresh Health Checks"
+        aria-label="Refresh service health checks"
+      >
+        <RotateCw class="w-4 h-4 {store.isCheckingServices ? 'animate-spin text-sky-400' : ''}" />
+      </button>
+    </div>
   </div>
 
   {#if Object.keys(categories).length > 0}
@@ -142,7 +223,7 @@
 
             <div
               onclick={() => handleOpen(targetUrl)}
-              class="flex items-center justify-between p-4 bg-[#111827] hover:bg-[#162036] border border-white/[0.08] hover:border-sky-400/35 rounded-2xl shadow-sm transition-all cursor-pointer min-h-[84px] group"
+              class="flex items-center justify-between p-4 bg-[#111827] hover:bg-[#162036] border border-white/[0.08] hover:border-sky-400/35 rounded-2xl shadow-sm transition-all cursor-pointer min-h-[84px] group relative"
               role="button"
               tabindex="0"
               onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && handleOpen(targetUrl)}
@@ -187,6 +268,32 @@
 
               <!-- Action buttons -->
               <div class="flex items-center gap-1.5 flex-shrink-0 ml-2">
+                <!-- Management actions (if manage mode enabled or on hover) -->
+                {#if isManageMode || svc.id}
+                  <div class="flex items-center gap-1 {isManageMode ? 'flex' : 'hidden group-hover:flex'}">
+                    {#if svc.id}
+                      <button
+                        type="button"
+                        onclick={(e) => openEditModal(svc, e)}
+                        class="w-8 h-8 rounded-lg bg-sky-500/10 hover:bg-sky-500/25 border border-sky-400/20 text-sky-300 flex items-center justify-center transition-colors cursor-pointer"
+                        title="Edit Service"
+                        aria-label="Edit Service"
+                      >
+                        <Pencil class="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onclick={(e) => handleDelete(svc, e)}
+                        class="w-8 h-8 rounded-lg bg-rose-500/10 hover:bg-rose-500/25 border border-rose-400/20 text-rose-300 flex items-center justify-center transition-colors cursor-pointer"
+                        title="Delete Service"
+                        aria-label="Delete Service"
+                      >
+                        <Trash2 class="w-3.5 h-3.5" />
+                      </button>
+                    {/if}
+                  </div>
+                {/if}
+
                 <button
                   type="button"
                   onclick={(e) => copyToClipboard(targetUrl, e)}
@@ -224,8 +331,25 @@
       Loading homelab service directory...
     </div>
   {:else}
-    <div class="text-center py-10 text-slate-400 text-sm bg-white/[0.02] border border-white/[0.05] rounded-2xl">
-      No services configured. Add items to <code class="text-sky-400">services</code> in <code class="text-slate-300">config.yaml</code>.
+    <div class="text-center py-10 text-slate-400 text-sm bg-white/[0.02] border border-white/[0.05] rounded-2xl flex flex-col items-center gap-3">
+      <p>No services configured yet.</p>
+      <button
+        type="button"
+        onclick={openAddModal}
+        class="px-4 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-white text-xs font-semibold shadow-lg shadow-sky-500/25 flex items-center gap-1.5 transition-all cursor-pointer"
+      >
+        <Plus class="w-4 h-4" />
+        <span>Add Your First Service</span>
+      </button>
     </div>
   {/if}
+
+  <!-- Service Add / Edit Modal -->
+  <ServiceModal
+    open={isModalOpen}
+    service={editingService}
+    categories={categoriesList}
+    onclose={() => isModalOpen = false}
+    onsaved={handleSaved}
+  />
 </section>

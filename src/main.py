@@ -11,15 +11,25 @@ from contextlib import asynccontextmanager
 import json
 import logging
 from pathlib import Path
-from typing import AsyncGenerator, Optional
+from typing import AsyncGenerator, List, Optional
 
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import get_config
+from src.db.crud import (
+    create_service,
+    delete_service,
+    get_distinct_categories,
+    reorder_services,
+    update_service,
+)
+from src.db.seeder import seed_services_from_config_if_empty
+from src.db.session import close_db, get_db, get_session_factory, init_db
 from src.grub import get_grub_manager
 from src.power import get_power_service
 from src.security import get_security_gate
@@ -39,8 +49,23 @@ async def lifespan(app: FastAPI):
     logger.info("JanusDeck backend starting on port %s", config.server.port)
     # Prime telemetry collector
     get_telemetry_collector(config)
+
+    # Initialize PostgreSQL if configured
+    if config.database.url:
+        try:
+            initialized = await init_db()
+            if initialized:
+                factory = get_session_factory()
+                if factory:
+                    async with factory() as session:
+                        await seed_services_from_config_if_empty(session, config)
+        except Exception as exc:
+            logger.error("Database initialization failed on startup: %s", exc)
+
     yield
+
     logger.info("JanusDeck backend shutting down.")
+    await close_db()
 
 
 app = FastAPI(
@@ -132,14 +157,150 @@ async def stream_telemetry_events(request: Request, count: int | None = None):
     )
 
 
+# ==============================================================================
+# Service Models & CRUD Endpoints
+# ==============================================================================
+
+class ServiceCreateRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    category: str = Field(..., min_length=1, max_length=100)
+    url: str = Field(..., min_length=1, max_length=500)
+    external_url: Optional[str] = None
+    health_check_url: Optional[str] = None
+    icon: str = "globe"
+    description: Optional[str] = None
+    display_order: int = 0
+    is_enabled: bool = True
+    pin: Optional[str] = None
+
+
+class ServiceUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    category: Optional[str] = None
+    url: Optional[str] = None
+    external_url: Optional[str] = None
+    health_check_url: Optional[str] = None
+    icon: Optional[str] = None
+    description: Optional[str] = None
+    display_order: Optional[int] = None
+    is_enabled: Optional[bool] = None
+    pin: Optional[str] = None
+
+
+class ReorderItem(BaseModel):
+    id: str
+    display_order: int
+
+
+class ServiceReorderRequest(BaseModel):
+    orders: List[ReorderItem]
+    pin: Optional[str] = None
+
+
+ServiceReorderRequest.model_rebuild()
+
+
 @app.get("/api/services")
-async def get_services_status():
+async def get_services_status(db: Optional[AsyncSession] = Depends(get_db)):
     """Evaluates HTTP health checks across all configured homelab services."""
     config = get_config()
-    services_status = await check_all_services(config)
+    services_status = await check_all_services(config=config, session=db)
     return {
         "services": services_status,
     }
+
+
+@app.get("/api/services/categories")
+async def get_service_categories(db: Optional[AsyncSession] = Depends(get_db)):
+    """Returns list of distinct service categories for auto-suggestions."""
+    if db is not None:
+        try:
+            categories = await get_distinct_categories(db)
+            if categories:
+                return {"categories": categories}
+        except Exception as exc:
+            logger.warning("Could not fetch categories from database: %s", exc)
+
+    config = get_config()
+    cats = list(dict.fromkeys(c.category for c in config.services if c.category))
+    return {"categories": cats}
+
+
+@app.post("/api/services")
+async def create_new_service(
+    req: ServiceCreateRequest,
+    request: Request,
+    db: Optional[AsyncSession] = Depends(get_db),
+):
+    """Creates a new homelab service (requires Master PIN)."""
+    check_auth_request(request, req.pin)
+    if db is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="PostgreSQL database is not connected. Configure DATABASE_URL in environment.",
+        )
+    data = req.model_dump(exclude={"pin"})
+    created = await create_service(db, data)
+    return {"status": "created", "service": created.to_dict()}
+
+
+@app.put("/api/services/{service_id}")
+async def update_existing_service(
+    service_id: str,
+    req: ServiceUpdateRequest,
+    request: Request,
+    db: Optional[AsyncSession] = Depends(get_db),
+):
+    """Updates an existing homelab service (requires Master PIN)."""
+    check_auth_request(request, req.pin)
+    if db is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="PostgreSQL database is not connected. Configure DATABASE_URL in environment.",
+        )
+    data = req.model_dump(exclude={"pin"}, exclude_unset=True)
+    updated = await update_service(db, service_id, data)
+    if not updated:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service not found")
+    return {"status": "updated", "service": updated.to_dict()}
+
+
+@app.delete("/api/services/{service_id}")
+async def delete_existing_service(
+    service_id: str,
+    request: Request,
+    pin: Optional[str] = None,
+    db: Optional[AsyncSession] = Depends(get_db),
+):
+    """Deletes a homelab service (requires Master PIN)."""
+    check_auth_request(request, pin)
+    if db is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="PostgreSQL database is not connected. Configure DATABASE_URL in environment.",
+        )
+    deleted = await delete_service(db, service_id)
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service not found")
+    return {"status": "deleted", "id": service_id}
+
+
+@app.patch("/api/services/reorder")
+async def reorder_existing_services(
+    req: ServiceReorderRequest,
+    request: Request,
+    db: Optional[AsyncSession] = Depends(get_db),
+):
+    """Updates display order for services (requires Master PIN)."""
+    check_auth_request(request, req.pin)
+    if db is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="PostgreSQL database is not connected. Configure DATABASE_URL in environment.",
+        )
+    orders = [item.model_dump() for item in req.orders]
+    await reorder_services(db, orders)
+    return {"status": "reordered"}
 
 
 # ==============================================================================
@@ -170,6 +331,33 @@ def get_client_ip(request: Request) -> str:
     if request.client and request.client.host:
         return request.client.host
     return "127.0.0.1"
+
+
+def check_auth_request(request: Request, pin: Optional[str] = None) -> bool:
+    """Verifies that the request is authenticated with Master PIN or PIN is not required."""
+    config = get_config()
+    if not config.security.pin_required:
+        return True
+
+    candidate_pin = (
+        pin
+        or request.headers.get("x-pin")
+        or request.headers.get("x-session-pin")
+    )
+    client_ip = get_client_ip(request)
+    gate = get_security_gate()
+    is_valid, message, status_detail = gate.verify_pin(candidate_pin, client_id=client_ip)
+    if not is_valid:
+        status_code = (
+            status.HTTP_429_TOO_MANY_REQUESTS
+            if "Locked out" in message
+            else status.HTTP_401_UNAUTHORIZED
+        )
+        raise HTTPException(
+            status_code=status_code,
+            detail=message,
+        )
+    return True
 
 
 @app.post("/api/auth/verify")

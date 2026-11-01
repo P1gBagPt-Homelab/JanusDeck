@@ -127,3 +127,90 @@ export async function clearNextEntry(sessionToken?: string | null): Promise<void
     throw new Error(data.message || 'Failed to clear next entry');
   }
 }
+
+function getAuthHeaders(pin?: string, sessionToken?: string | null): Record<string, string> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const effectivePin = pin || (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('janus_session_pin') : null);
+  const effectiveToken = sessionToken || (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('janus_session_token') : null);
+  if (effectivePin) headers['X-Session-Pin'] = effectivePin;
+  if (effectiveToken) headers['X-Session-Token'] = effectiveToken;
+  return headers;
+}
+
+export async function fetchCategories(): Promise<string[]> {
+  try {
+    const res = await fetch('/api/services/categories');
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.categories || [];
+  } catch {
+    return [];
+  }
+}
+
+export async function createService(
+  service: Partial<ServiceItem>,
+  pin?: string
+): Promise<ServiceItem> {
+  const headers = getAuthHeaders(pin);
+  const res = await fetch('/api/services', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(service),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.detail || data.message || 'Failed to create service');
+  }
+  return data.service;
+}
+
+export async function updateService(
+  id: string,
+  service: Partial<ServiceItem>,
+  pin?: string
+): Promise<ServiceItem> {
+  const headers = getAuthHeaders(pin);
+  const res = await fetch(`/api/services/${id}`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify(service),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.detail || data.message || 'Failed to update service');
+  }
+  return data.service;
+}
+
+export async function deleteService(
+  id: string,
+  pin?: string
+): Promise<{ status: string; id: string }> {
+  const headers = getAuthHeaders(pin);
+  const res = await fetch(`/api/services/${id}`, {
+    method: 'DELETE',
+    headers,
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.detail || data.message || 'Failed to delete service');
+  }
+  return data;
+}
+
+export async function reorderServices(
+  orders: { id: string; display_order: number }[],
+  pin?: string
+): Promise<void> {
+  const headers = getAuthHeaders(pin);
+  const res = await fetch('/api/services/reorder', {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify({ orders }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.detail || data.message || 'Failed to reorder services');
+  }
+}
