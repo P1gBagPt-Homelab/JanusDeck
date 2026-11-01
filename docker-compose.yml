@@ -34,3 +34,11 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
+
+    # Traefik Reverse Proxy & VPN/LAN Restriction
+    labels:
+      - "traefik.enable=true"
+      # Only allow traffic from local LAN, WireGuard VPN subnet, and localhost
+      - "traefik.http.middlewares.vpn-only.ipallowlist.sourcerange=192.168.1.0/24, 10.8.0.0/24, 127.0.0.1/32"
+      - "traefik.http.middlewares.vpn-only.ipwhitelist.sourcerange=192.168.1.0/24, 10.8.0.0/24, 127.0.0.1/32"
+      - "traefik.http.routers.janus-deck.middlewares=vpn-only"
