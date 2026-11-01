@@ -30,6 +30,10 @@ venv/
 ENV/
 env/
 
+# Pytest
+.pytest_cache/
+
+
 # Environment variables & local secrets
 .env
 .env.local
