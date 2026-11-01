@@ -59,15 +59,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Ensure web directories exist relative to project root
+# Frontend SPA directories
 BASE_DIR = Path(__file__).resolve().parent.parent
-STATIC_DIR = BASE_DIR / "web" / "static"
-TEMPLATES_DIR = BASE_DIR / "web" / "templates"
-STATIC_DIR.mkdir(parents=True, exist_ok=True)
-TEMPLATES_DIR.mkdir(parents=True, exist_ok=True)
+FRONTEND_DIST = BASE_DIR / "frontend" / "dist"
+ASSETS_DIR = FRONTEND_DIST / "assets"
+ASSETS_DIR.mkdir(parents=True, exist_ok=True)
 
-# Mount static directory
-app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+# Mount Vite assets directory
+app.mount("/assets", StaticFiles(directory=str(ASSETS_DIR)), name="assets")
 
 
 @app.get("/api/health")
@@ -361,12 +360,12 @@ async def clear_next_entry(req: PowerActionRequest, request: Request):
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_index():
-    """Serves the dashboard index HTML."""
-    index_file = TEMPLATES_DIR / "index.html"
-    if index_file.is_file():
-        return HTMLResponse(content=index_file.read_text(encoding="utf-8"))
+    """Serves the dashboard index HTML from compiled Svelte 5 SPA."""
+    dist_index = FRONTEND_DIST / "index.html"
+    if dist_index.is_file():
+        return HTMLResponse(content=dist_index.read_text(encoding="utf-8"))
 
-    # Fallback placeholder HTML until Phase 3 UI is built
+    # Fallback placeholder HTML if frontend has not been compiled yet
     config = get_config()
     return HTMLResponse(content=f"""<!DOCTYPE html>
 <html lang="en">

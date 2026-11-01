@@ -98,7 +98,7 @@ janus-deck/
 ├── docs/                        # Architecture & dual-boot setup guides
 │   └── ARCHITECTURE.md
 ├── src/                         # FastAPI backend (telemetry & systemd bridge)
-├── web/                         # Frontend templates & static assets
+├── frontend/                    # Svelte 5 + TypeScript + Vite + Tailwind CSS SPA
 ├── .gitignore
 ├── LICENSE                      # MIT Open Source License
 └── README.md
