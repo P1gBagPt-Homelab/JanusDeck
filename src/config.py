@@ -24,6 +24,8 @@ class SecurityConfig(BaseModel):
     pin_required: bool = True
     master_pin: str = "2070"
     session_timeout_seconds: int = 300
+    max_failed_attempts: int = 5
+    lockout_duration_seconds: int = 60
 
 
 class OSTarget(BaseModel):
@@ -39,6 +41,9 @@ class PowerConfig(BaseModel):
     allow_reboot: bool = True
     allow_os_switch: bool = True
     grub_cfg_path: str = "/boot/grub/grub.cfg"
+    grubenv_path: str = "/boot/grub/grubenv"
+    dbus_socket_path: str = "/var/run/dbus/system_bus_socket"
+    simulate: bool = False
     os_targets: List[OSTarget] = Field(default_factory=list)
 
 
@@ -170,6 +175,18 @@ def load_config(path: Optional[str] = None, reload: bool = False) -> AppConfig:
             config.server.refresh_interval_ms = int(env_interval)
         except ValueError:
             pass
+
+    if env_sim := os.getenv("JANUS_SIMULATE_POWER"):
+        config.power.simulate = env_sim.strip().lower() in ("1", "true", "yes", "on")
+
+    if env_grub_cfg := os.getenv("JANUS_GRUB_CFG_PATH"):
+        config.power.grub_cfg_path = env_grub_cfg
+
+    if env_grubenv := os.getenv("JANUS_GRUBENV_PATH"):
+        config.power.grubenv_path = env_grubenv
+
+    if env_dbus_socket := os.getenv("JANUS_DBUS_SOCKET_PATH"):
+        config.power.dbus_socket_path = env_dbus_socket
 
     _cached_config = config
     return config
