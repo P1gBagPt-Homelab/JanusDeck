@@ -238,11 +238,33 @@ class GrubManager:
             raise RuntimeError(f"Could not write GRUB next_entry to {self.grubenv_path}: {exc}") from exc
 
     async def clear_next_entry(self) -> bool:
-        """Clears GRUB next_entry, ensuring default OS boots on next startup."""
+        """Clears GRUB next_entry and resets non-default saved_entry, ensuring Linux Server boots."""
         if self.simulate:
             self._simulated_next_entry = None
             logger.info("[SIMULATION] Cleared GRUB next_entry")
             return True
+
+        # Check existing variables in grubenv to see if saved_entry points to an OS target
+        vars_dict: Dict[str, str] = {}
+        if self.grubenv_path.is_file():
+            try:
+                raw = self.grubenv_path.read_bytes()
+                vars_dict = parse_grubenv_bytes(raw)
+            except Exception as exc:
+                logger.error("Failed to read grubenv file at %s: %s", self.grubenv_path, exc)
+
+        needs_unset_saved = False
+        saved = vars_dict.get("saved_entry")
+        if saved:
+            for target in self.config.os_targets:
+                if (
+                    target.grub_entry == saved
+                    or target.name == saved
+                    or target.id.lower() in saved.lower()
+                    or "windows" in saved.lower()
+                ):
+                    needs_unset_saved = True
+                    break
 
         editenv_bin = shutil.which("grub-editenv")
         if editenv_bin and self.grubenv_path.exists():
@@ -256,18 +278,37 @@ class GrubManager:
                     stderr=asyncio.subprocess.PIPE,
                 )
                 await proc.communicate()
-                if proc.returncode == 0:
-                    return True
-            except Exception:
-                pass
 
+                if needs_unset_saved:
+                    proc_saved = await asyncio.create_subprocess_exec(
+                        editenv_bin,
+                        str(self.grubenv_path),
+                        "unset",
+                        "saved_entry",
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE,
+                    )
+                    await proc_saved.communicate()
+            except Exception as exc:
+                logger.warning("Error running grub-editenv unset: %s", exc)
+
+        # Direct file fallback and guarantee
         if self.grubenv_path.is_file():
             try:
                 raw = self.grubenv_path.read_bytes()
                 vars_dict = parse_grubenv_bytes(raw)
-                vars_dict.pop("next_entry", None)
-                serialized = serialize_grubenv_bytes(vars_dict)
-                self.grubenv_path.write_bytes(serialized)
+                modified = False
+                if "next_entry" in vars_dict:
+                    vars_dict.pop("next_entry", None)
+                    modified = True
+                if needs_unset_saved and "saved_entry" in vars_dict:
+                    vars_dict.pop("saved_entry", None)
+                    modified = True
+
+                if modified:
+                    serialized = serialize_grubenv_bytes(vars_dict)
+                    self.grubenv_path.write_bytes(serialized)
+                    logger.info("Successfully updated %s: next_entry cleared", self.grubenv_path)
                 return True
             except Exception as exc:
                 logger.error("Failed to clear next_entry from grubenv: %s", exc)

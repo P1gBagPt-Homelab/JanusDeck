@@ -66,6 +66,7 @@ class PowerService:
             "simulate_mode": self._simulate,
             "dbus_socket_present": self.is_dbus_socket_available(),
             "dbus_socket_path": str(self.dbus_socket_path),
+            "next_entry": current_next_entry,
             "current_next_entry": current_next_entry,
             "os_targets": [t.model_dump() for t in self.config.os_targets],
             "last_action": self.action_history[-1] if self.action_history else None,
@@ -215,10 +216,13 @@ class PowerService:
         logger.error(err_msg)
         raise RuntimeError(err_msg)
 
-    async def reboot(self, interactive: bool = True) -> Dict[str, Any]:
-        """Issues host reboot via DBus."""
+    async def reboot(self, interactive: bool = True, clear_next: bool = True) -> Dict[str, Any]:
+        """Issues host reboot via DBus, ensuring system reboots into default OS (Ubuntu) unless explicitly switching."""
         if not self.config.allow_reboot:
             raise PermissionError("Host reboot action is disabled in server configuration.")
+        if clear_next:
+            # Ensure any staged one-shot next_entry or target saved_entry is cleared before rebooting
+            await self.grub_manager.clear_next_entry()
         return await self._execute_dbus_login1_method("Reboot", interactive=interactive)
 
     async def poweroff(self, interactive: bool = True) -> Dict[str, Any]:
@@ -261,8 +265,8 @@ class PowerService:
         logger.info("Setting GRUB next_entry to '%s' for target '%s'", entry_to_boot, target_name)
         await self.grub_manager.set_next_entry(entry_to_boot)
 
-        # Trigger reboot
-        reboot_result = await self.reboot(interactive=interactive)
+        # Trigger reboot without clearing the target we just set
+        reboot_result = await self.reboot(interactive=interactive, clear_next=False)
 
         return {
             "status": "switching_os",

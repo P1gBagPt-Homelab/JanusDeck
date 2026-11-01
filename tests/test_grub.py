@@ -92,6 +92,33 @@ async def test_grubenv_set_and_clear_file(tmp_path: Path):
 
 
 @pytest.mark.asyncio
+async def test_grubenv_clear_also_resets_target_saved_entry(tmp_path: Path):
+    grubenv_file = tmp_path / "grubenv"
+    initial_bytes = serialize_grubenv_bytes({
+        "next_entry": "Windows Boot Manager (on /dev/nvme0n1p1)",
+        "saved_entry": "Windows Boot Manager (on /dev/nvme0n1p1)",
+    })
+    grubenv_file.write_bytes(initial_bytes)
+
+    power_cfg = PowerConfig(
+        grubenv_path=str(grubenv_file),
+        simulate=False,
+        os_targets=[
+            OSTarget(id="windows", name="Windows 11", grub_entry="Windows Boot Manager (on /dev/nvme0n1p1)"),
+        ],
+    )
+    manager = GrubManager(power_cfg)
+
+    await manager.clear_next_entry()
+    assert await manager.get_next_entry() is None
+
+    # Verify both next_entry and saved_entry were purged
+    final_vars = parse_grubenv_bytes(grubenv_file.read_bytes())
+    assert "next_entry" not in final_vars
+    assert "saved_entry" not in final_vars
+
+
+@pytest.mark.asyncio
 async def test_grub_simulation_mode():
     power_cfg = PowerConfig(simulate=True)
     manager = GrubManager(power_cfg)

@@ -35,11 +35,16 @@ async def test_power_service_simulated_actions():
     grub = GrubManager(config)
     service = PowerService(config=config, grub_manager=grub)
 
-    # Reboot
+    # Stage next_entry first
+    await grub.set_next_entry("Windows 11")
+    assert await grub.get_next_entry() == "Windows 11"
+
+    # Reboot should clear next_entry so system reboots into default OS
     res_reboot = await service.reboot(interactive=True)
     assert res_reboot["action"] == "Reboot"
     assert res_reboot["simulated"] is True
     assert res_reboot["success"] is True
+    assert await grub.get_next_entry() is None
 
     # Shutdown
     res_shutdown = await service.poweroff(interactive=True)

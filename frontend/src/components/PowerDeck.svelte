@@ -3,7 +3,7 @@
   import { clearNextEntry } from '../lib/api';
   import { Power, Gamepad2, RotateCw, X } from '@lucide/svelte';
 
-  const nextEntry = $derived(store.powerStatus?.next_entry);
+  const nextEntry = $derived(store.powerStatus?.next_entry || (store.powerStatus as any)?.current_next_entry);
 
   function triggerAction(type: 'switch-os' | 'reboot' | 'shutdown', label: string, targetId?: string) {
     store.pendingAction = { type, label, targetId };
@@ -21,6 +21,7 @@
       store.addToast('One-shot boot cleared. System will boot into Linux Server.', 'success');
       if (store.powerStatus) {
         store.powerStatus.next_entry = null;
+        (store.powerStatus as any).current_next_entry = null;
       }
     } catch (err: any) {
       store.addToast(err.message || 'Failed to clear next entry', 'error');
