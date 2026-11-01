@@ -11,14 +11,18 @@ from contextlib import asynccontextmanager
 import json
 import logging
 from pathlib import Path
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Optional
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 
 from src.config import get_config
+from src.grub import get_grub_manager
+from src.power import get_power_service
+from src.security import get_security_gate
 from src.services import check_all_services
 from src.telemetry import get_telemetry_collector
 
@@ -138,6 +142,222 @@ async def get_services_status():
     }
 
 
+# ==============================================================================
+# Security & Authentication Models / Routes
+# ==============================================================================
+
+class VerifyPinRequest(BaseModel):
+    pin: str
+
+
+class PowerActionRequest(BaseModel):
+    pin: Optional[str] = None
+    interactive: bool = True
+
+
+class SwitchOSRequest(BaseModel):
+    pin: Optional[str] = None
+    target_id: Optional[str] = None
+    grub_entry: Optional[str] = None
+    interactive: bool = True
+
+
+def get_client_ip(request: Request) -> str:
+    """Extract client IP address from proxy headers or direct socket."""
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    if request.client and request.client.host:
+        return request.client.host
+    return "127.0.0.1"
+
+
+@app.post("/api/auth/verify")
+async def verify_pin(req: VerifyPinRequest, request: Request):
+    """Verifies master PIN against brute-force security gate."""
+    client_ip = get_client_ip(request)
+    gate = get_security_gate()
+    is_valid, message, status_detail = gate.verify_pin(req.pin, client_id=client_ip)
+
+    if is_valid:
+        return {"valid": True, "message": message}
+
+    if "Locked out" in message:
+        return JSONResponse(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            content={
+                "valid": False,
+                "message": message,
+                "remaining_lockout_seconds": status_detail,
+            },
+        )
+
+    return JSONResponse(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        content={
+            "valid": False,
+            "message": message,
+            "remaining_attempts": status_detail,
+        },
+    )
+
+
+@app.get("/api/auth/status")
+async def auth_status(request: Request):
+    """Returns PIN requirement and lockout state for caller."""
+    client_ip = get_client_ip(request)
+    gate = get_security_gate()
+    config = get_config()
+    is_locked, remaining = gate.is_locked_out(client_ip)
+    return {
+        "pin_required": config.security.pin_required,
+        "locked_out": is_locked,
+        "remaining_lockout_seconds": remaining,
+    }
+
+
+# ==============================================================================
+# Host Power & Dual-Boot Bridge Routes
+# ==============================================================================
+
+@app.get("/api/power/status")
+async def get_power_status():
+    """Returns power bridge capabilities, DBus socket status, and active GRUB entry."""
+    service = get_power_service()
+    return await service.get_power_status()
+
+
+@app.get("/api/power/targets")
+async def get_boot_targets():
+    """Returns configured OS targets and discovered GRUB menu entries."""
+    config = get_config()
+    grub = get_grub_manager(config)
+    discovered = grub.parse_menu_entries()
+    return {
+        "configured_targets": [t.model_dump() for t in config.power.os_targets],
+        "discovered_entries": discovered,
+    }
+
+
+@app.post("/api/power/reboot")
+async def trigger_reboot(req: PowerActionRequest, request: Request):
+    """Triggers graceful host reboot via DBus (requires PIN)."""
+    client_ip = get_client_ip(request)
+    gate = get_security_gate()
+
+    is_valid, message, status_detail = gate.verify_pin(req.pin, client_id=client_ip)
+    if not is_valid:
+        status_code = (
+            status.HTTP_429_TOO_MANY_REQUESTS
+            if "Locked out" in message
+            else status.HTTP_401_UNAUTHORIZED
+        )
+        return JSONResponse(
+            status_code=status_code,
+            content={"error": "authentication_failed", "message": message, "detail": status_detail},
+        )
+
+    service = get_power_service()
+    try:
+        result = await service.reboot(interactive=req.interactive)
+        return {"status": "rebooting", **result}
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
+    except Exception as exc:
+        logger.error("Reboot execution error: %s", exc)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc))
+
+
+@app.post("/api/power/shutdown")
+async def trigger_shutdown(req: PowerActionRequest, request: Request):
+    """Triggers graceful host poweroff via DBus (requires PIN)."""
+    client_ip = get_client_ip(request)
+    gate = get_security_gate()
+
+    is_valid, message, status_detail = gate.verify_pin(req.pin, client_id=client_ip)
+    if not is_valid:
+        status_code = (
+            status.HTTP_429_TOO_MANY_REQUESTS
+            if "Locked out" in message
+            else status.HTTP_401_UNAUTHORIZED
+        )
+        return JSONResponse(
+            status_code=status_code,
+            content={"error": "authentication_failed", "message": message, "detail": status_detail},
+        )
+
+    service = get_power_service()
+    try:
+        result = await service.poweroff(interactive=req.interactive)
+        return {"status": "shutting_down", **result}
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
+    except Exception as exc:
+        logger.error("Shutdown execution error: %s", exc)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc))
+
+
+@app.post("/api/power/switch-os")
+async def trigger_switch_os(req: SwitchOSRequest, request: Request):
+    """Sets one-shot GRUB next_entry and reboots machine (requires PIN)."""
+    client_ip = get_client_ip(request)
+    gate = get_security_gate()
+
+    is_valid, message, status_detail = gate.verify_pin(req.pin, client_id=client_ip)
+    if not is_valid:
+        status_code = (
+            status.HTTP_429_TOO_MANY_REQUESTS
+            if "Locked out" in message
+            else status.HTTP_401_UNAUTHORIZED
+        )
+        return JSONResponse(
+            status_code=status_code,
+            content={"error": "authentication_failed", "message": message, "detail": status_detail},
+        )
+
+    service = get_power_service()
+    try:
+        result = await service.switch_os(
+            target_id=req.target_id,
+            grub_entry=req.grub_entry,
+            interactive=req.interactive,
+        )
+        return result
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    except Exception as exc:
+        logger.error("Switch OS execution error: %s", exc)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc))
+
+
+@app.post("/api/power/clear-next-entry")
+async def clear_next_entry(req: PowerActionRequest, request: Request):
+    """Clears pending GRUB next_entry without rebooting (requires PIN)."""
+    client_ip = get_client_ip(request)
+    gate = get_security_gate()
+
+    is_valid, message, status_detail = gate.verify_pin(req.pin, client_id=client_ip)
+    if not is_valid:
+        status_code = (
+            status.HTTP_429_TOO_MANY_REQUESTS
+            if "Locked out" in message
+            else status.HTTP_401_UNAUTHORIZED
+        )
+        return JSONResponse(
+            status_code=status_code,
+            content={"error": "authentication_failed", "message": message, "detail": status_detail},
+        )
+
+    grub = get_grub_manager()
+    success = await grub.clear_next_entry()
+    return {
+        "status": "cleared" if success else "failed",
+        "message": "Cleared GRUB next_entry." if success else "Failed to clear next_entry.",
+    }
+
+
 @app.get("/", response_class=HTMLResponse)
 async def serve_index():
     """Serves the dashboard index HTML."""
@@ -165,8 +385,8 @@ async def serve_index():
   <div class="card">
     <h1>{config.server.title}</h1>
     <p>{config.server.subtitle}</p>
-    <p>Backend API Engine is active (Phase 1 Ready).</p>
-    <p>Inspect live endpoints: <a href="/docs">Swagger API Docs</a> | <a href="/api/stats/snapshot">Stats Snapshot</a> | <a href="/api/config">Config</a></p>
+    <p>Backend API Engine & Power Bridge active (Phases 1 & 2 Ready).</p>
+    <p>Inspect live endpoints: <a href="/docs">Swagger API Docs</a> | <a href="/api/stats/snapshot">Stats Snapshot</a> | <a href="/api/power/status">Power Status</a></p>
   </div>
 </body>
 </html>

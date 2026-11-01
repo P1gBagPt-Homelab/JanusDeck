@@ -6,14 +6,14 @@ This roadmap provides the exact step-by-step implementation plan for building an
 
 ## 🗺️ Execution Phases Overview
 
-| Phase | Milestone | Scope / Deliverables |
-| :---: | :--- | :--- |
-| **Phase 1** | **Backend Engine & Hardware API** | FastAPI setup, `psutil` system metrics, NVIDIA NVML/`pynvml` telemetry, SSE streaming endpoint. |
-| **Phase 2** | **Host Power & Dual-Boot Bridge** | systemd DBus interface (poweroff/reboot), `/boot/grubenv` editor (`grub-reboot` execution), PIN authentication gate. |
-| **Phase 3** | **Frontend UI & Mobile Dashboard** | Dark-mode glassmorphic interface (Tailwind + Lucide), live gauge updates, service bookmark grid, PIN modal. |
-| **Phase 4** | **Containerization & Multi-Arch Build** | Optimized `Dockerfile`, permission hardening, NVIDIA container runtime testing. |
-| **Phase 5** | **Coolify Deployment & Traefik Routing** | Coolify Docker Compose deployment, volume mounts (`dbus`, `/boot`), SSL via Let's Encrypt at `control.janus-lab.duckdns.org`. |
-| **Phase 6** | **Failsafe & Dual-Boot Verification** | Real-world reboot tests, one-shot Windows boot verification, auto-revert to Linux validation. |
+| Phase | Milestone | Scope / Deliverables | Status |
+| :---: | :--- | :--- | :---: |
+| **Phase 1** | **Backend Engine & Hardware API** | FastAPI setup, `psutil` system metrics, NVIDIA NVML/`pynvml` telemetry, SSE streaming endpoint. | ✅ Complete |
+| **Phase 2** | **Host Power & Dual-Boot Bridge** | systemd DBus interface (poweroff/reboot), `/boot/grubenv` editor (`grub-reboot` execution), PIN authentication gate. | ✅ Complete |
+| **Phase 3** | **Frontend UI & Mobile Dashboard** | Dark-mode glassmorphic interface (Tailwind + Lucide), live gauge updates, service bookmark grid, PIN modal. | ⏳ Pending |
+| **Phase 4** | **Containerization & Multi-Arch Build** | Optimized `Dockerfile`, permission hardening, NVIDIA container runtime testing. | ⏳ Pending |
+| **Phase 5** | **Coolify Deployment & Traefik Routing** | Coolify Docker Compose deployment, volume mounts (`dbus`, `/boot`), SSL via Let's Encrypt at `control.janus-lab.duckdns.org`. | ⏳ Pending |
+| **Phase 6** | **Failsafe & Dual-Boot Verification** | Real-world reboot tests, one-shot Windows boot verification, auto-revert to Linux validation. | ⏳ Pending |
 
 ---
 
@@ -38,22 +38,27 @@ This roadmap provides the exact step-by-step implementation plan for building an
 
 ---
 
-### Phase 2: Host Power & Dual-Boot Bridge (`src/power.py`)
+### Phase 2: Host Power & Dual-Boot Bridge (`src/power.py`) - ✅ Completed
 
 1. **System Power Actions via DBus**:
-   * Interface with `/var/run/dbus/system_bus_socket`.
+   * Interfaced with `/var/run/dbus/system_bus_socket` (`src/power.py`).
    * Standard D-Bus method calls to `org.freedesktop.login1.Manager`:
      * `PowerOff(interactive=True)`
      * `Reboot(interactive=True)`
+   * Multi-tier fallback strategy: `dbus-send` -> `busctl` -> `systemctl` -> graceful simulation mode.
 
 2. **Dual-Boot Switching via GRUB**:
-   * Read available boot entries from `/boot/grub/grub.cfg`.
-   * Trigger one-shot boot entry via `grub-editenv /boot/grub/grubenv set next_entry="..."`.
-   * Immediate reboot execution.
+   * Discovers and parses boot entries from `/boot/grub/grub.cfg` (`src/grub.py`).
+   * Schedules one-shot boot entry via `grub-editenv /boot/grub/grubenv set next_entry="..."` with pure Python 1024-byte block format fallback.
+   * Trigger reboot execution and clear next_entry actions.
 
 3. **Security Gate**:
-   * Constant-time PIN comparison against `config.yaml` or `JANUS_PIN` environment variable.
-   * Rate limiting to prevent brute-force attempts.
+   * Constant-time PIN verification using `secrets.compare_digest` against `config.yaml` or `JANUS_PIN` (`src/security.py`).
+   * Rate limiting and lockout protection against brute-force attacks (HTTP 429 lockout response).
+   * Fully exposed via FastAPI endpoints:
+     * `POST /api/auth/verify` & `GET /api/auth/status`
+     * `GET /api/power/status` & `GET /api/power/targets`
+     * `POST /api/power/reboot`, `POST /api/power/shutdown`, `POST /api/power/switch-os`, `POST /api/power/clear-next-entry`
 
 ---
 
