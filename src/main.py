@@ -180,7 +180,12 @@ async def verify_pin(req: VerifyPinRequest, request: Request):
     is_valid, message, status_detail = gate.verify_pin(req.pin, client_id=client_ip)
 
     if is_valid:
-        return {"valid": True, "message": message}
+        import secrets
+        return {
+            "valid": True,
+            "message": message,
+            "session_token": secrets.token_urlsafe(32),
+        }
 
     if "Locked out" in message:
         return JSONResponse(

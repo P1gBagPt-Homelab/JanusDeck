@@ -50,9 +50,7 @@ export async function executePowerAction(
   let endpoint = '';
   const body: any = {};
 
-  if (sessionToken) {
-    // Session token will be passed via header
-  } else if (pin) {
+  if (pin) {
     body.pin = pin;
   }
 
