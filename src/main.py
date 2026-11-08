@@ -20,6 +20,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.backup import get_backup_manager
 from src.config import get_config
 from src.db.crud import (
     create_service,
@@ -549,6 +550,37 @@ async def clear_next_entry(req: PowerActionRequest, request: Request):
         "status": "cleared" if success else "failed",
         "message": "Cleared GRUB next_entry." if success else "Failed to clear next_entry.",
     }
+
+
+# ==============================================================================
+# Automated Backups Inspection & Trigger Routes
+# ==============================================================================
+
+class BackupTriggerRequest(BaseModel):
+    pin: Optional[str] = None
+    force: bool = False
+
+
+@app.get("/api/backup/status")
+@app.get("/api/backups")
+async def get_backup_status():
+    """Inspects local snapshots, checks if today's backup exists, and provides inventory."""
+    mgr = get_backup_manager()
+    return mgr.get_status()
+
+
+@app.post("/api/backup/trigger")
+async def trigger_manual_backup(req: BackupTriggerRequest, request: Request):
+    """Triggers automated backup script execution (requires Master PIN)."""
+    check_auth_request(request, req.pin)
+    mgr = get_backup_manager()
+    result = await mgr.trigger_backup(force=req.force)
+    if not result.get("success"):
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR if result.get("status") == "error" else status.HTTP_400_BAD_REQUEST,
+            content=result,
+        )
+    return result
 
 
 @app.get("/", response_class=HTMLResponse)

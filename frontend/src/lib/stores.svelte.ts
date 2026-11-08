@@ -1,5 +1,5 @@
 import type { TelemetrySnapshot } from '../types/telemetry';
-import type { PowerStatus, ServiceItem, AppPublicConfig } from '../types/config';
+import type { PowerStatus, ServiceItem, AppPublicConfig, BackupStatusResponse } from '../types/config';
 
 export interface ToastMessage {
   id: string;
@@ -23,6 +23,10 @@ class DashboardStore {
   // Services
   services = $state<ServiceItem[]>([]);
   isCheckingServices = $state(false);
+
+  // Automated Backups
+  backupStatus = $state<BackupStatusResponse | null>(null);
+  isCheckingBackups = $state(false);
 
   // Auth & Session
   sessionToken = $state<string | null>(

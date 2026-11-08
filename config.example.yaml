@@ -79,6 +79,17 @@ telemetry:
         path: "/data/storage"
 
 # ------------------------------------------------------------------------------
+# Automated Backups & Cloud Sync (Guide 10)
+# ------------------------------------------------------------------------------
+backup:
+  enabled: true
+  backup_dir: "/data/backups/daily"
+  backup_script: "/data/scripts/backup-janus.sh"
+  rclone_remote: "janus-backup-encrypted:daily"
+  retention_days_local: 14
+  retention_days_cloud: 60
+
+# ------------------------------------------------------------------------------
 # Service Directory / Quick Launchers
 # ------------------------------------------------------------------------------
 services:

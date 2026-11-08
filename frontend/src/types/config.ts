@@ -52,6 +52,41 @@ export interface AppPublicConfig {
   power: PowerConfig;
   telemetry: any;
   services: ServiceCategory[];
+  backup?: {
+    enabled: boolean;
+    backup_dir: string;
+    rclone_remote: string;
+    retention_days_local: number;
+    retention_days_cloud: number;
+  };
+}
+
+export interface BackupSnapshot {
+  filename: string;
+  size_bytes: number;
+  size_formatted: string;
+  created_at: string;
+  date: string;
+  is_today: boolean;
+  age_days: number;
+  relative_time: string;
+}
+
+export interface BackupStatusResponse {
+  backup_dir: string;
+  directory_exists: boolean;
+  today_done: boolean;
+  today_date: string;
+  today_backup: BackupSnapshot | null;
+  latest_backup: BackupSnapshot | null;
+  total_backups: number;
+  total_size_bytes: number;
+  total_size_formatted: string;
+  backups: BackupSnapshot[];
+  rclone_remote: string;
+  retention_days_local?: number;
+  retention_days_cloud?: number;
+  message?: string;
 }
 
 export interface PowerStatus {

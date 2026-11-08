@@ -106,6 +106,15 @@ class ServiceCategory(BaseModel):
     items: List[ServiceItem] = Field(default_factory=list)
 
 
+class BackupConfig(BaseModel):
+    enabled: bool = True
+    backup_dir: str = "/data/backups/daily"
+    backup_script: str = "/data/scripts/backup-janus.sh"
+    rclone_remote: str = "janus-backup-encrypted:daily"
+    retention_days_local: int = 14
+    retention_days_cloud: int = 60
+
+
 class AppConfig(BaseModel):
     server: ServerConfig = Field(default_factory=ServerConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
@@ -113,6 +122,7 @@ class AppConfig(BaseModel):
     power: PowerConfig = Field(default_factory=PowerConfig)
     telemetry: TelemetryConfig = Field(default_factory=TelemetryConfig)
     services: List[ServiceCategory] = Field(default_factory=list)
+    backup: BackupConfig = Field(default_factory=BackupConfig)
 
     def to_public_dict(self) -> dict:
         """Returns a sanitized dict safe to expose to client/frontend (excluding secrets)."""
@@ -201,6 +211,15 @@ def load_config(path: Optional[str] = None, reload: bool = False) -> AppConfig:
 
     if env_db := (os.getenv("DATABASE_URL") or os.getenv("JANUS_DATABASE_URL")):
         config.database.url = env_db
+
+    if env_backup_dir := (os.getenv("JANUS_BACKUP_DIR") or os.getenv("BACKUP_DIR")):
+        config.backup.backup_dir = env_backup_dir
+
+    if env_backup_script := (os.getenv("JANUS_BACKUP_SCRIPT") or os.getenv("BACKUP_SCRIPT")):
+        config.backup.backup_script = env_backup_script
+
+    if env_rclone_remote := (os.getenv("JANUS_RCLONE_REMOTE") or os.getenv("RCLONE_REMOTE")):
+        config.backup.rclone_remote = env_rclone_remote
 
     _cached_config = config
     return config

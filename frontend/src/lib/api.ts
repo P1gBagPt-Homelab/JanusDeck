@@ -1,4 +1,4 @@
-import type { AppPublicConfig, PowerStatus, ServiceItem } from '../types/config';
+import type { AppPublicConfig, BackupStatusResponse, PowerStatus, ServiceItem } from '../types/config';
 import type { TelemetrySnapshot } from '../types/telemetry';
 
 export function normalizeServices(data: any): ServiceItem[] {
@@ -54,6 +54,38 @@ export async function fetchServices(): Promise<{ services: ServiceItem[]; checke
     ...data,
     services: normalizeServices(data.services),
   };
+}
+
+export async function fetchBackupStatus(): Promise<BackupStatusResponse> {
+  const res = await fetch('/api/backup/status');
+  if (!res.ok) throw new Error('Failed to fetch backup status');
+  return res.json();
+}
+
+export async function triggerBackup(
+  sessionToken?: string | null,
+  pin?: string | null,
+  force = false
+): Promise<{ success: boolean; message: string; output?: string }> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (sessionToken) {
+    headers['X-Session-Token'] = sessionToken;
+  }
+  if (pin) {
+    headers['X-PIN'] = pin;
+  }
+
+  const res = await fetch('/api/backup/trigger', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ pin: pin || undefined, force }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.message || data.detail || 'Backup trigger failed');
+  }
+  return data;
 }
 
 export async function verifyPin(pin: string): Promise<{ session_token?: string; expires_in?: number; error?: string }> {

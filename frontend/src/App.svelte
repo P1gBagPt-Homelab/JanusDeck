@@ -1,12 +1,13 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { store } from './lib/stores.svelte';
-  import { fetchConfig, fetchPowerStatus, fetchServices, normalizeServices } from './lib/api';
+  import { fetchConfig, fetchPowerStatus, fetchServices, fetchBackupStatus, normalizeServices } from './lib/api';
   import { startTelemetryStream, stopTelemetryStream } from './lib/sse';
 
   import Header from './components/Header.svelte';
   import TelemetryDeck from './components/TelemetryDeck.svelte';
   import PowerDeck from './components/PowerDeck.svelte';
+  import BackupDeck from './components/BackupDeck.svelte';
   import ServiceDirectory from './components/ServiceDirectory.svelte';
   import PinModal from './components/PinModal.svelte';
   import CountdownGate from './components/CountdownGate.svelte';
@@ -34,6 +35,9 @@
       startTelemetryStream();
       fetchPowerStatus().then(p => {
         store.powerStatus = p;
+      }).catch(() => {});
+      fetchBackupStatus().then(b => {
+        store.backupStatus = b;
       }).catch(() => {});
       fetchServices().then(res => {
         store.services = normalizeServices(res.services);
@@ -64,7 +68,10 @@
       <!-- 2. Dual-Boot & Host Power Controls -->
       <PowerDeck />
 
-      <!-- 3. Homelab Services Directory -->
+      <!-- 3. Automated Backups & Cloud Sync -->
+      <BackupDeck />
+
+      <!-- 4. Homelab Services Directory -->
       <ServiceDirectory />
     </div>
 

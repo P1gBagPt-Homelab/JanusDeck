@@ -36,6 +36,9 @@ services:
       # Storage telemetry: Mount host storage pools read-only to monitor disk usage
       - /data/storage:/data/storage:ro
 
+      # Automated backup repository: Read-only access to inspect snapshot archives
+      - /data/backups:/data/backups:ro
+
     # NVIDIA GPU Telemetry Passthrough (Optional - remove if no NVIDIA GPU)
     deploy:
       resources:
