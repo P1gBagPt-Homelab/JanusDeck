@@ -1,6 +1,6 @@
 <script lang="ts">
   import { store } from '../lib/stores.svelte';
-  import { Zap, Server, Clock, Lock, Unlock } from '@lucide/svelte';
+  import { Server, Clock, Lock, Unlock } from '@lucide/svelte';
 
   function formatUptime(seconds?: number): string {
     if (!seconds || seconds <= 0) return 'Just started';
@@ -38,8 +38,12 @@
   <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
     <!-- Brand -->
     <div class="flex items-center gap-3.5">
-      <div class="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-400/30 flex items-center justify-center text-sky-400 shadow-sm flex-shrink-0">
-        <Zap class="w-5 h-5" />
+      <div class="w-10 h-10 rounded-xl bg-[#161D28] border border-[#2A3649] flex items-center justify-center shadow-sm flex-shrink-0 overflow-hidden p-1.5 group">
+        <img
+          src="/logos/janus-glyph-white-transparent.png"
+          alt="Janus Logo"
+          class="w-full h-full object-contain transition-transform group-hover:scale-105"
+        />
       </div>
       <div>
         <h1 class="text-lg font-bold tracking-tight text-white leading-tight">

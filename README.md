@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="media/banners/janus-deck-lockup-banner.png" alt="JanusDeck Hero Banner" width="720" />
+
 # ⚡ JanusDeck
 
 ### The Open-Source Command Deck for Hybrid Gaming & Dual-Boot Home Servers

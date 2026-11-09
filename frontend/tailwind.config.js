@@ -25,6 +25,26 @@ export default {
         rose: {
           accent: '#f43f5e',
         },
+        janus: {
+          bg: {
+            base: '#0F141C',
+            surface: '#161D28',
+            elevated: '#1E2736',
+            border: '#2A3649',
+          },
+          windows: {
+            primary: '#689DBB',
+            secondary: '#3A5A78',
+          },
+          ubuntu: {
+            primary: '#C86D44',
+            secondary: '#5C384C',
+          },
+          text: {
+            primary: '#ECEFF4',
+            muted: '#94A3B8',
+          },
+        },
       },
     },
   },

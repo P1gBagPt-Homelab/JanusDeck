@@ -15,7 +15,7 @@ from typing import AsyncGenerator, List, Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -88,11 +88,29 @@ app.add_middleware(
 # Frontend SPA directories
 BASE_DIR = Path(__file__).resolve().parent.parent
 FRONTEND_DIST = BASE_DIR / "frontend" / "dist"
-ASSETS_DIR = FRONTEND_DIST / "assets"
-ASSETS_DIR.mkdir(parents=True, exist_ok=True)
+FRONTEND_PUBLIC = BASE_DIR / "frontend" / "public"
 
-# Mount Vite assets directory
-app.mount("/assets", StaticFiles(directory=str(ASSETS_DIR)), name="assets")
+# Mount static asset and media pack directories
+for static_dir_name in ("assets", "favicons", "logos", "banners", "theme"):
+    dist_dir = FRONTEND_DIST / static_dir_name
+    pub_dir = FRONTEND_PUBLIC / static_dir_name
+    target_dir = dist_dir if dist_dir.is_dir() else pub_dir
+    target_dir.mkdir(parents=True, exist_ok=True)
+    app.mount(f"/{static_dir_name}", StaticFiles(directory=str(target_dir)), name=static_dir_name)
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def get_favicon():
+    """Serves the primary favicon for root-level browser requests."""
+    for candidate in [
+        FRONTEND_DIST / "favicons" / "favicon.ico",
+        FRONTEND_PUBLIC / "favicons" / "favicon.ico",
+        FRONTEND_DIST / "favicon.ico",
+        FRONTEND_PUBLIC / "favicon.ico",
+    ]:
+        if candidate.is_file():
+            return FileResponse(str(candidate), media_type="image/x-icon")
+    raise HTTPException(status_code=404, detail="Favicon not found")
 
 
 @app.get("/api/health")

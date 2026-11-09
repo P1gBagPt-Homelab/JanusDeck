@@ -1,0 +1,31 @@
+:root {
+  /* Core Surfaces */
+  --janus-bg-base: #0F141C;       /* Deep Charcoal Navy */
+  --janus-bg-surface: #161D28;    /* Card & Panel Background */
+  --janus-bg-elevated: #1E2736;   /* Hover & Modal Surface */
+  --janus-border: #2A3649;        /* Subtle Divider Lines */
+
+  /* Left Profile: Windows Environment (Muted Slate Blue) */
+  --janus-win-primary: #689DBB;   /* Steel Cyan Highlight */
+  --janus-win-secondary: #3A5A78; /* Slate Blue Midtone */
+  --janus-win-glow: rgba(104, 157, 187, 0.15);
+
+  /* Right Profile: Ubuntu Environment (Muted Terracotta) */
+  --janus-ubu-primary: #C86D44;   /* Muted Terracotta Highlight */
+  --janus-ubu-secondary: #5C384C; /* Dusty Aubergine Shadow */
+  --janus-ubu-glow: rgba(200, 109, 68, 0.15);
+
+  /* Typography */
+  --janus-text-primary: #ECEFF4;  /* Crisp Off-White */
+  --janus-text-muted: #94A3B8;    /* Secondary Labels */
+  --janus-font-display: 'Space Grotesk', 'Montserrat', sans-serif;
+  --janus-font-sans: 'Inter', system-ui, sans-serif;
+  --janus-font-mono: 'JetBrains Mono', monospace;
+}
+
+body {
+  background-color: var(--janus-bg-base);
+  color: var(--janus-text-primary);
+  font-family: var(--janus-font-sans);
+  margin: 0;
+}
