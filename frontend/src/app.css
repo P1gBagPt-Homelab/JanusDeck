@@ -11,6 +11,20 @@
   --accent-emerald: #34d399;
   --accent-amber: #fbbf24;
   --accent-rose: #f43f5e;
+
+  /* Janus Media Pack Tokens */
+  --janus-bg-base: #0F141C;
+  --janus-bg-surface: #161D28;
+  --janus-bg-elevated: #1E2736;
+  --janus-border: #2A3649;
+  --janus-win-primary: #689DBB;
+  --janus-win-secondary: #3A5A78;
+  --janus-win-glow: rgba(104, 157, 187, 0.15);
+  --janus-ubu-primary: #C86D44;
+  --janus-ubu-secondary: #5C384C;
+  --janus-ubu-glow: rgba(200, 109, 68, 0.15);
+  --janus-text-primary: #ECEFF4;
+  --janus-text-muted: #94A3B8;
 }
 
 /* Custom Themed Scrollbars */

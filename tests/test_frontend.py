@@ -57,3 +57,44 @@ async def test_svelte_css_asset_served():
         assert response.status_code == 200
         assert "text/css" in response.headers.get("content-type", "")
         assert len(response.text) > 500
+
+
+@pytest.mark.asyncio
+async def test_root_serves_media_pack_metadata():
+    """Verify that GET / includes head meta, favicons, and social cards from media pack."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get("/")
+        assert response.status_code == 200
+        html = response.text
+
+        assert 'name="theme-color" content="#0F141C"' in html
+        assert 'href="/favicons/favicon.ico"' in html
+        assert 'href="/favicons/apple-touch-icon.png"' in html
+        assert 'href="/favicons/site.webmanifest"' in html
+        assert 'property="og:image" content="/banners/og-social-preview-1200x630.png"' in html
+
+
+@pytest.mark.asyncio
+async def test_favicon_ico_served():
+    """Verify that root /favicon.ico is served cleanly."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get("/favicon.ico")
+        assert response.status_code == 200
+        assert "image/" in response.headers.get("content-type", "")
+        assert len(response.content) > 100
+
+
+@pytest.mark.asyncio
+async def test_media_pack_static_routes():
+    """Verify that media pack directories (/favicons, /logos, /banners) are accessible."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        res_fav = await client.get("/favicons/site.webmanifest")
+        assert res_fav.status_code == 200
+
+        res_logo = await client.get("/logos/janus-logo-transparent-512.png")
+        assert res_logo.status_code == 200
+        assert "image/png" in res_logo.headers.get("content-type", "")
+
+        res_banner = await client.get("/banners/og-social-preview-1200x630.png")
+        assert res_banner.status_code == 200
+        assert "image/png" in res_banner.headers.get("content-type", "")

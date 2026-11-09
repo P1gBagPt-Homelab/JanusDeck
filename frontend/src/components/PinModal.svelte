@@ -1,7 +1,7 @@
 <script lang="ts">
   import { store } from '../lib/stores.svelte';
   import { verifyPin } from '../lib/api';
-  import { Lock, X, Check, ClipboardPaste, Zap, ShieldAlert } from '@lucide/svelte';
+  import { Lock, X, Check, ClipboardPaste, ShieldAlert } from '@lucide/svelte';
 
   interface Props {
     mandatory?: boolean;
@@ -306,8 +306,12 @@
   <div class="min-h-screen w-full flex flex-col items-center justify-center p-4 sm:p-6 bg-[#0b0f19]">
     <!-- Brand badge at top -->
     <div class="flex flex-col items-center gap-2 mb-6 text-center animate-in fade-in duration-300">
-      <div class="w-14 h-14 rounded-2xl bg-sky-500/10 border border-sky-400/30 flex items-center justify-center text-sky-400 shadow-lg shadow-sky-500/10 mb-1">
-        <Zap class="w-7 h-7" />
+      <div class="w-16 h-16 rounded-2xl bg-[#161D28] border border-[#2A3649] flex items-center justify-center shadow-lg shadow-black/40 mb-1 overflow-hidden p-2.5">
+        <img
+          src="/logos/janus-glyph-white-transparent.png"
+          alt="Janus Logo"
+          class="w-full h-full object-contain drop-shadow"
+        />
       </div>
       <h1 class="text-2xl font-black tracking-tight text-white">
         {store.config?.server?.title || 'Janus Lab'}
